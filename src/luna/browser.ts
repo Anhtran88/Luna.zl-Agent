@@ -33,7 +33,23 @@ export interface BrowserCommandResult {
   rerouted: boolean;
   outcome: "simulated" | "refused";
   summary: string;
+  launched: false;
 }
+
+export interface BrowserBackendContract {
+  id: BrowserBackendId;
+  readiness: "ready" | "stub";
+  liveLaunch: false;
+  dryRunOnly: true;
+  capabilities: readonly BrowserCapability[];
+}
+
+export const BROWSER_CONTRACTS: readonly BrowserBackendContract[] = [
+  { id: "mock", readiness: "ready", liveLaunch: false, dryRunOnly: true, capabilities: BROWSER_CAPABILITIES },
+  { id: "playwright", readiness: "stub", liveLaunch: false, dryRunOnly: true, capabilities: BROWSER_CAPABILITIES },
+  { id: "skyvern", readiness: "stub", liveLaunch: false, dryRunOnly: true, capabilities: BROWSER_CAPABILITIES },
+  { id: "browser-use", readiness: "stub", liveLaunch: false, dryRunOnly: true, capabilities: BROWSER_CAPABILITIES },
+];
 
 export interface BrowserAdapter {
   readonly id: BrowserBackendId;
@@ -71,6 +87,7 @@ function summarize(command: BrowserCommand, selection: BrowserSelection): Browse
       rerouted: selection.rerouted,
       outcome: "refused",
       summary: `Từ chối ${command.capability}: không đăng nhập, không upload và không download.${reroute}${target}`,
+      launched: false,
     };
   }
 
@@ -80,6 +97,7 @@ function summarize(command: BrowserCommand, selection: BrowserSelection): Browse
     rerouted: selection.rerouted,
     outcome: "simulated",
     summary: `Dry-run ${command.capability}. Không mở trình duyệt thật.${reroute}${target}`,
+    launched: false,
   };
 }
 
@@ -121,6 +139,10 @@ export class BrowserOrchestrator {
 
   registered(): BrowserBackendId[] {
     return [...this.adapters.keys()];
+  }
+
+  contracts(): readonly BrowserBackendContract[] {
+    return BROWSER_CONTRACTS;
   }
 
   /**

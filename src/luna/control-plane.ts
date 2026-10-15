@@ -11,6 +11,7 @@ import {
   randomIds,
   systemClock,
   LUNA_PHASE,
+  LUNA_RELEASE,
   type AgentRun,
   type AgentTask,
   type ApprovalRequest,
@@ -47,6 +48,7 @@ export class LunaControlPlane {
   private readonly tasks = new Map<string, AgentTask>();
   private readonly approvals = new Map<string, ApprovalRequest>();
   private readonly audits: AuditEvent[] = [];
+  private readonly runs: AgentRun[] = [];
   private readonly deps: ControlPlaneDeps;
 
   constructor(deps: ControlPlaneDeps) {
@@ -106,7 +108,7 @@ export class LunaControlPlane {
       taskId: task.id,
       detail:
         mode === "live"
-          ? "Đã ghi nhận yêu cầu live. Thực thi sẽ bị Phase 0/1 từ chối."
+          ? "Đã ghi nhận yêu cầu live. Thực thi sẽ bị phase lock từ chối."
           : "Đã tạo tác vụ ở chế độ dry-run.",
     });
     return task;
@@ -263,6 +265,7 @@ export class LunaControlPlane {
     const { firebaseConfig, modelConfig, firebase, store } = this.deps;
     return {
       phase: LUNA_PHASE,
+      release: LUNA_RELEASE,
       phaseLock: true,
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
@@ -270,6 +273,7 @@ export class LunaControlPlane {
       modules: moduleCatalog(firebase.mode),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
+      runs: [...this.runs].reverse().slice(0, 20),
       audit: [...this.audits].reverse().slice(0, 40),
       adapters: {
         firebase: {
@@ -279,6 +283,7 @@ export class LunaControlPlane {
           credentialConfigured: firebaseConfig.credentialConfigured,
           projectId: firebaseConfig.projectId,
           databaseUrlHost: firebaseConfig.databaseUrlHost,
+          emulatorRequested: firebaseConfig.emulatorRequested,
         },
         models: {
           activeProvider: "mock",
@@ -328,7 +333,7 @@ export class LunaControlPlane {
     steps: StepResult[],
     startedAt: string,
   ): Promise<void> {
-    await this.deps.store.saveRun({
+    const run: AgentRun = {
       id: this.deps.ids.next("run"),
       taskId,
       status,
@@ -336,7 +341,9 @@ export class LunaControlPlane {
       finishedAt: this.deps.clock.now(),
       dryRun: true,
       stepOutcomes: steps,
-    });
+    };
+    this.runs.push(run);
+    await this.deps.store.saveRun(run);
   }
 }
 
@@ -346,7 +353,7 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 2. Không giữ secret và không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 3. Không giữ secret và không có nút tắt khóa.",
     },
     {
       id: "agent",

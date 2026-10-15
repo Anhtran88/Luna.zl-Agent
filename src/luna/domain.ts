@@ -1,6 +1,8 @@
 /** Luna Phase 0/1 domain types. No I/O and no secrets. */
 
 export const LUNA_PHASE = "2-foundations" as const;
+/** Visible release. Stored schema phase stays v1-compatible. */
+export const LUNA_RELEASE = "3-controlled" as const;
 
 export class LunaError extends Error {
   readonly code: string;
@@ -133,6 +135,7 @@ export interface ModuleStatus {
 
 export interface ControlPlaneSnapshot {
   phase: typeof LUNA_PHASE;
+  release: typeof LUNA_RELEASE;
   phaseLock: true;
   schemaVersion: 1;
   storeMode: "memory" | "firebase";
@@ -140,6 +143,7 @@ export interface ControlPlaneSnapshot {
   modules: ModuleStatus[];
   tasks: AgentTask[];
   approvals: ApprovalRequest[];
+  runs: AgentRun[];
   audit: AuditEvent[];
   adapters: {
     firebase: {
@@ -149,6 +153,7 @@ export interface ControlPlaneSnapshot {
       credentialConfigured: boolean;
       projectId: string | null;
       databaseUrlHost: string | null;
+      emulatorRequested: boolean;
     };
     models: {
       activeProvider: "mock";

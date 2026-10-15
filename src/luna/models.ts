@@ -1,4 +1,4 @@
-import { PhaseLockedError } from "./domain.ts";
+import { LunaError, PhaseLockedError } from "./domain.ts";
 import type { NineRouterPublicConfig } from "./config.ts";
 
 export interface ChatMessage {
@@ -9,6 +9,8 @@ export interface ChatMessage {
 export interface ModelCompletionRequest {
   model: string;
   messages: ChatMessage[];
+  /** Local fault injection. Never leaves the process. */
+  mockFault?: "timeout" | "unavailable";
 }
 
 export interface ModelInfo {
@@ -90,6 +92,18 @@ function usageFor(request: ModelCompletionRequest, content: string): UsageMetada
     estimatedCostUsd: 0,
     billed: false,
   };
+}
+
+export class ModelAttemptError extends LunaError {
+  readonly attempts: number;
+  readonly network = false as const;
+  readonly estimatedCostUsd = 0 as const;
+
+  constructor(code: "TIMEOUT" | "UNAVAILABLE", message: string, attempts: number) {
+    super(code, message);
+    this.name = "ModelAttemptError";
+    this.attempts = attempts;
+  }
 }
 
 export class MockModelProvider implements ModelProvider {
@@ -200,6 +214,14 @@ export class ModelRouter {
 
   async complete(request: ModelCompletionRequest): Promise<ModelCompletion> {
     const route = this.resolve(request.model);
+    if (request.mockFault) {
+      const attempts = this.config.maxRetries + 1;
+      throw new ModelAttemptError(
+        request.mockFault === "timeout" ? "TIMEOUT" : "UNAVAILABLE",
+        `Mock ${request.mockFault} sau ${attempts} lần cục bộ. Không gọi mạng.`,
+        attempts,
+      );
+    }
     const provider = this.registry.require("mock");
     const completion = await provider.complete({ ...request, model: route.resolvedModel });
     return {

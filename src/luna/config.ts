@@ -10,6 +10,8 @@ export interface FirebasePublicConfig {
   credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON";
   credentialConfigured: boolean;
   liveRequested: boolean;
+  /** Recorded only. The server factory never opens an emulator socket. */
+  emulatorRequested: boolean;
   /** Always false here. A live flag does not open a socket by itself. */
   liveEnabled: false;
 }
@@ -87,6 +89,7 @@ export function loadFirebasePublicConfig(env: Env): FirebasePublicConfig {
     credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON",
     credentialConfigured: hasSecret(env.FIREBASE_SERVICE_ACCOUNT_JSON),
     liveRequested: env.FIREBASE_LIVE_ENABLED === "true" || env.LUNA_FIREBASE_LIVE === "true",
+    emulatorRequested: env.LUNA_FIREBASE_EMULATOR === "true",
     liveEnabled: false,
   };
 }

@@ -73,11 +73,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </span>
             <div>
               <p className="font-display text-3xl leading-none">Luna</p>
-              <p className="mt-1 text-sm text-muted">Phase {snapshot.phase}</p>
+              <p className="mt-1 text-sm text-muted">Phase {snapshot.release}</p>
+              <p className="text-xs text-muted">schema v{snapshot.schemaVersion} · khóa</p>
             </div>
           </div>
           <p className="text-sm leading-6 text-muted">
-            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase này chỉ lập kế hoạch, duyệt và
+            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 3 chỉ lập kế hoạch, duyệt và
             dry-run.
           </p>
           <dl className="grid gap-3 text-sm">
@@ -85,6 +86,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
               <dt className="text-muted">Firebase</dt>
               <dd className="mt-1 font-medium">
                 {snapshot.adapters.firebase.mode} · schema v{snapshot.schemaVersion}
+                {snapshot.adapters.firebase.emulatorRequested ? " · emulator không nối" : ""}
               </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
@@ -250,6 +252,46 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                     <p className="text-xs text-muted">{selected.mode}</p>
                     <h3 className="mt-1 font-display text-2xl break-words">{selected.title}</h3>
                     <p className="mt-2 text-sm leading-6 break-words text-muted">{selected.goal}</p>
+                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-muted">Trạng thái</dt>
+                        <dd className="mt-1 font-medium">
+                          {STATUS_LABEL[selected.status]}
+                          {["dry_run_completed", "rejected", "cancelled", "blocked"].includes(
+                            selected.status,
+                          )
+                            ? " · kết thúc"
+                            : ""}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Duyệt</dt>
+                        <dd className="mt-1 font-medium">
+                          {approval
+                            ? approval.status === "pending"
+                              ? "Chờ duyệt"
+                              : approval.status === "approved"
+                                ? "Đã duyệt dry-run"
+                                : "Từ chối"
+                            : "Không cần"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Run</dt>
+                        <dd className="mt-1 font-medium">
+                          {snapshot.runs.find((run) => run.taskId === selected.id)
+                            ? `${snapshot.runs.find((run) => run.taskId === selected.id)?.status} · dry-run`
+                            : "Chưa chạy"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted">Audit</dt>
+                        <dd className="mt-1 font-medium">
+                          {snapshot.audit.filter((event) => event.taskId === selected.id).length} sự
+                          kiện
+                        </dd>
+                      </div>
+                    </dl>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -431,9 +473,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
           <section className="rounded-2xl border border-line bg-panel p-4 sm:p-5">
             <h2 className="font-display text-3xl">Việc cần chủ repo quyết</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm leading-6 text-muted">
-              <li>Phase 2: chọn project Firebase, nếu có, và người giữ service account.</li>
-              <li>Phase 3: 9Router có được gọi live không, và ngân sách model.</li>
-              <li>Phase 4: browser thật vẫn phải nằm sau cổng duyệt.</li>
+              <li>Firebase live vẫn tắt. URL lunazl-agent đã ghi nhận, nhưng chưa có REST credential.</li>
+              <li>9Router live và ngân sách model vẫn cần quyết định riêng.</li>
+              <li>Browser thật vẫn phải nằm sau cổng duyệt. Phase này chỉ có contract mock.</li>
               <li>
                 Phase 5: Zalo và eOffice dừng lại cho đến khi có quyết định riêng. Không tự chạy.
               </li>

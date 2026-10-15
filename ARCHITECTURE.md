@@ -119,6 +119,16 @@ Model Router đăng ký provider `mock` và `nine-router`. Mọi `complete` củ
 
 Chi tiết path và quy tắc migration: [docs/SCHEMA.md](docs/SCHEMA.md).
 
+## Phase 3 controlled integration
+
+`runControlledFlow` đi từ tạo tác vụ, planner, cổng duyệt, dry-run, audit rồi tới trạng thái kết thúc. Tác vụ nhạy cảm không có quyết định thì dừng ở `awaiting_approval`.
+
+Firebase emulator ở Phase 3 là `InProcessRtdbTransport`: chỉ nhận `http` trên loopback và từ chối URL production. `LUNA_FIREBASE_EMULATOR=true` chỉ được ghi nhận. Factory của server vẫn trả memory adapter và không mở socket. Rules mẫu không được deploy.
+
+Model Router có thể giả lập timeout hoặc unavailable. Số lần thử là `maxRetries + 1`, toàn bộ trong tiến trình, `estimatedCostUsd` vẫn là 0, `fetch` không được gọi. 9Router live vẫn ném `PhaseLockedError`.
+
+Browser Orchestrator công bố contract cho `mock`, `playwright`, `skyvern` và `browser-use`. Mọi contract có `liveLaunch: false`. Stub không được gọi.
+
 ## GitHub
 
 Nhánh làm việc là `phase-0-1-bootstrap`. Remote chính thức là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Draft PR [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1) vào `main` vẫn để mở, chưa merge. Khảo sát lúc repo trống nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.
