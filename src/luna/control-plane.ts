@@ -25,6 +25,7 @@ import {
   type ModuleStatus,
   type StepResult,
 } from "./domain.ts";
+import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
@@ -40,6 +41,7 @@ export interface ControlPlaneDeps {
   firebaseConfig: FirebasePublicConfig;
   modelConfig: NineRouterPublicConfig;
   store: LunaStore;
+  deployment: DeployPosture;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -72,6 +74,7 @@ export class LunaControlPlane {
       firebaseConfig,
       modelConfig,
       store: partial?.store ?? new MemoryLunaStore(),
+      deployment: partial?.deployment ?? describeDeployPosture(env),
     });
   }
 
@@ -270,7 +273,7 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode),
+      modules: moduleCatalog(firebase.mode, this.deps.deployment),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -301,6 +304,7 @@ export class LunaControlPlane {
           stubs: ["playwright", "skyvern", "browser-use"],
         },
       },
+      deployment: this.deps.deployment,
     };
   }
 
@@ -347,13 +351,16 @@ export class LunaControlPlane {
   }
 }
 
-function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): ModuleStatus[] {
+function moduleCatalog(
+  firebaseMode: "memory" | "disabled-live" | "rest",
+  deployment: DeployPosture,
+): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 4. Adapter locked hoặc mock. Không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 5. Dry-run local, chưa production. Không có nút tắt khóa.",
     },
     {
       id: "agent",
@@ -387,6 +394,14 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       name: "Approval & Audit",
       state: "ready",
       detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký. phaseLock không ghi tắt được.",
+    },
+    {
+      id: "deploy",
+      name: "Deployment",
+      state: deployment.blocked ? "locked" : "ready",
+      detail: deployment.blocked
+        ? `${deployment.target} bị chặn. Không publish, không rules, không mạng production.`
+        : `${deployment.target} dry-run. Chưa production và không gọi mạng ngoài.`,
     },
   ];
 }

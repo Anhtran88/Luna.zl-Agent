@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Luna · Phase 4";
+const APP_NAME = "Luna · Phase 5";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Bảng điều khiển Luna Phase 4. Adapter locked, offline hoặc mock. Không tự động hóa tài khoản thật.",
+          "Bảng điều khiển Luna Phase 5. Deployment dry-run local, chưa production.",
       },
       { name: "theme-color", content: "#101614" },
     ],

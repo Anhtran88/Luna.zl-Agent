@@ -78,8 +78,8 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </div>
           </div>
           <p className="text-sm leading-6 text-muted">
-            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 4 giữ adapter ở mức
-            locked, offline hoặc mock.
+            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 5 chỉ dry-run local,
+            chưa production.
           </p>
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
@@ -95,6 +95,13 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Browser</dt>
               <dd className="mt-1 font-medium">mock · launch off</dd>
+            </div>
+            <div className="rounded-2xl border border-line bg-panel px-4 py-3">
+              <dt className="text-muted">Deploy</dt>
+              <dd className="mt-1 font-medium">
+                {snapshot.deployment.target} · dry-run
+                {snapshot.deployment.blocked ? " · bị chặn" : " · chưa production"}
+              </dd>
             </div>
           </dl>
         </aside>
@@ -122,11 +129,11 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
               <div className="text-sm leading-6">
                 <p className="font-medium">Phase lock không tắt được từ giao diện này.</p>
                 <p className="mt-1 text-muted">
-                  API không nhận chế độ live. Firebase, 9Router và browser đều locked hoặc mock.
-                  Store {snapshot.storeMode}. Model{" "}
-                  {snapshot.adapters.models.activeProvider}, timeout {snapshot.adapters.models.timeoutMs}{" "}
-                  ms, retry {snapshot.adapters.models.maxRetries}, chi phí $
-                  {snapshot.adapters.models.estimatedCostUsd}.
+                  API không nhận chế độ live. Deploy {snapshot.deployment.target} là dry-run, chưa
+                  production. Firebase, 9Router và browser đều locked hoặc mock. Store{" "}
+                  {snapshot.storeMode}. Model {snapshot.adapters.models.activeProvider}, timeout{" "}
+                  {snapshot.adapters.models.timeoutMs} ms, retry {snapshot.adapters.models.maxRetries},
+                  chi phí ${snapshot.adapters.models.estimatedCostUsd}.
                 </p>
               </div>
             </div>
@@ -474,10 +481,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             <ul className="mt-3 flex flex-col gap-2 text-sm leading-6 text-muted">
               <li>Firebase live vẫn tắt. URL lunazl-agent đã ghi nhận, nhưng chưa có REST credential.</li>
               <li>9Router live và ngân sách model vẫn cần quyết định riêng.</li>
-              <li>Browser thật vẫn phải nằm sau cổng duyệt. Phase 4 chỉ có contract, launch off.</li>
-              <li>
-                Phase 5: Zalo và eOffice dừng lại cho đến khi có quyết định riêng. Không tự chạy.
-              </li>
+              <li>Browser thật vẫn phải nằm sau cổng duyệt. Launch off.</li>
+              <li>Staging có mạng và production deploy cần xác nhận môi trường, credential và ngân sách.</li>
+              <li>Zalo và eOffice vẫn dừng cho đến khi có quyết định riêng. Không tự chạy.</li>
             </ul>
           </section>
         </main>

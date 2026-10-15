@@ -1,6 +1,6 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 4 giữ Firebase, 9Router và browser ở trạng thái locked, offline hoặc mock. Không đăng nhập Zalo hay eOffice.
+Bảng điều khiển Luna. Phase 5 chỉ dry-run deployment ở local. Firebase, 9Router và browser vẫn locked, offline hoặc mock. Không đăng nhập Zalo hay eOffice và không deploy production.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
@@ -18,7 +18,10 @@ npm test
 npm run lint
 npm run typecheck
 npm run build
+npm run deploy:dry-run
 ```
+
+`deploy:dry-run` kiểm tra phase lock, live flag, secret và endpoint. Lệnh không gọi mạng production. Health check chỉ chạy khi truyền URL loopback, ví dụ `--health http://127.0.0.1:8080/`.
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -36,7 +39,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 làm trên `phase-4-controlled-adapters` và chưa merge. Cách chạy local và các khóa adapter nằm ở [docs/OPERATIONS.md](docs/OPERATIONS.md). Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 vẫn là draft [pull/4](https://github.com/Anhtran88/Luna.zl-Agent/pull/4). Phase 5 làm trên `phase-5-controlled-deployment` và chưa merge. Vận hành nằm ở [docs/OPERATIONS.md](docs/OPERATIONS.md). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 
