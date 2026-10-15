@@ -26,6 +26,7 @@ import {
   type StepResult,
 } from "./domain.ts";
 import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
+import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -43,6 +44,7 @@ export interface ControlPlaneDeps {
   modelConfig: NineRouterPublicConfig;
   store: LunaStore;
   deployment: DeployPosture;
+  readiness: ReadinessSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -76,6 +78,7 @@ export class LunaControlPlane {
       modelConfig,
       store: partial?.store ?? new MemoryLunaStore(),
       deployment: partial?.deployment ?? describeDeployPosture(env),
+      readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
     });
   }
 
@@ -277,7 +280,7 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode, this.deps.deployment),
+      modules: moduleCatalog(firebase.mode, this.deps.deployment, this.deps.readiness),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -310,6 +313,7 @@ export class LunaControlPlane {
       },
       deployment: this.deps.deployment,
       security: SECURITY_POSTURE,
+      readiness: this.deps.readiness,
     };
   }
 
@@ -360,13 +364,14 @@ export class LunaControlPlane {
 function moduleCatalog(
   firebaseMode: "memory" | "disabled-live" | "rest",
   deployment: DeployPosture,
+  readiness: ReadinessSummary,
 ): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 6. Khóa an toàn không tắt được từ giao diện.",
+      detail: "Bảng điều khiển Phase 7. Readiness production là NO-GO.",
     },
     {
       id: "agent",
@@ -414,6 +419,12 @@ function moduleCatalog(
       name: "Security",
       state: "locked",
       detail: "Rules deny-all, header an toàn, rate-limit local. Live và production vẫn khóa.",
+    },
+    {
+      id: "readiness",
+      name: "Readiness",
+      state: "locked",
+      detail: `NO-GO. Điểm kỹ thuật ${readiness.technicalScore}. Còn ${readiness.ownerMissing} điều kiện chủ repo.`,
     },
   ];
 }

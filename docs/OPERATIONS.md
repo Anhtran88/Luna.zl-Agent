@@ -1,13 +1,14 @@
-# Vận hành Phase 6
+# Vận hành Phase 7
 
-Phase 5 để lại dry-run deployment. Phase 6 thêm kiểm tra an ninh local. Không publish và không đổi dữ liệu thật.
+Phase 7 đánh giá readiness. Production là NO-GO. Không publish và không bật live.
 
 ```bash
+npm run readiness
 npm run security:check
 npm run deploy:dry-run
 ```
 
-`security:check` không in secret. Rules Firebase vẫn deny-all và không được deploy. Chi tiết đe doạ và sự cố: [SECURITY.md](SECURITY.md).
+Báo cáo đầy đủ: [READINESS.md](READINESS.md). An ninh: [SECURITY.md](SECURITY.md).
 
 ## Môi trường
 

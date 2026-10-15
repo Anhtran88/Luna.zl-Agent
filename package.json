@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "deploy:dry-run": "node --experimental-strip-types src/luna/deploy-cli.ts",
-    "security:check": "node --experimental-strip-types src/luna/security-cli.ts"
+    "security:check": "node --experimental-strip-types src/luna/security-cli.ts",
+    "readiness": "node --experimental-strip-types src/luna/readiness-cli.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

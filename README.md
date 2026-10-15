@@ -1,6 +1,6 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 6 siết khóa an toàn trên dry-run local. Firebase, 9Router và browser vẫn locked. Không deploy production và không đăng nhập Zalo hay eOffice.
+Bảng điều khiển Luna. Phase 7 đánh giá production readiness và kết luận NO-GO. Firebase, 9Router và browser vẫn locked. Không deploy và không đăng nhập Zalo hay eOffice.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
@@ -20,9 +20,10 @@ npm run typecheck
 npm run build
 npm run deploy:dry-run
 npm run security:check
+npm run readiness
 ```
 
-`deploy:dry-run` không gọi mạng production. `security:check` quét secret và chạy `npm audit` cho dependency production. Không in giá trị nhạy cảm. Mô hình đe doạ nằm ở [docs/SECURITY.md](docs/SECURITY.md).
+`readiness` in báo cáo NO-GO. Không gửi telemetry và không gọi mạng. Chi tiết nằm ở [docs/READINESS.md](docs/READINESS.md).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -40,7 +41,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 và 5 vẫn là draft [pull/4](https://github.com/Anhtran88/Luna.zl-Agent/pull/4) và [pull/5](https://github.com/Anhtran88/Luna.zl-Agent/pull/5). Phase 6 làm trên `phase-6-security-hardening` và chưa merge. Vận hành nằm ở [docs/OPERATIONS.md](docs/OPERATIONS.md). Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4, 5 và 6 vẫn là draft. Phase 7 làm trên `phase-7-production-readiness` và chưa merge. Báo cáo readiness nằm ở [docs/READINESS.md](docs/READINESS.md). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 
