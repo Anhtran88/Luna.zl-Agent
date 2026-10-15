@@ -1,12 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { loadFirebasePublicConfig } from "./config.ts";
+import { loadFirebasePublicConfig, LUNAZL_FIREBASE_DATABASE_URL } from "./config.ts";
 import { LunaError, PhaseLockedError, sequenceIds } from "./domain.ts";
 import {
   MemoryRealtimeDatabase,
   PhaseLockedFirebaseAdapter,
   createRealtimeDatabase,
 } from "./firebase.ts";
+import { evaluateFirebaseConnect } from "./firebase-rtdb.ts";
 import type { RtdbTransport } from "./firebase-rtdb.ts";
 
 describe("firebase realtime port", () => {
@@ -98,5 +99,54 @@ describe("firebase realtime port", () => {
     assert.equal(calls.length, 1);
     assert.match(calls[0] ?? "", /https:\/\/luna-dev\.firebasedatabase\.app\/luna\/queue\.json\?auth=/);
     assert.equal(config.databaseUrl, "https://luna-dev.firebasedatabase.app");
+  });
+
+  it("parses the lunazl-agent URL and stays locked without opt-in, credential, or transport", async () => {
+    const calls: string[] = [];
+    const transport: RtdbTransport = {
+      async request(input) {
+        calls.push(input.url);
+        return { status: 200, body: null };
+      },
+    };
+    const quiet = loadFirebasePublicConfig({
+      FIREBASE_PROJECT_ID: "lunazl-agent",
+      FIREBASE_DATABASE_URL: `${LUNAZL_FIREBASE_DATABASE_URL}/`,
+      FIREBASE_LIVE_ENABLED: "false",
+    });
+    assert.equal(quiet.databaseUrl, LUNAZL_FIREBASE_DATABASE_URL);
+    assert.equal(
+      quiet.databaseUrlHost,
+      "lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app",
+    );
+    assert.equal(quiet.liveRequested, false);
+    assert.equal(quiet.liveEnabled, false);
+    assert.equal(quiet.credentialConfigured, false);
+    assert.equal(createRealtimeDatabase(quiet).mode, "memory");
+
+    const optedIn = loadFirebasePublicConfig({
+      FIREBASE_DATABASE_URL: LUNAZL_FIREBASE_DATABASE_URL,
+      FIREBASE_LIVE_ENABLED: "true",
+    });
+    assert.equal(optedIn.liveEnabled, false);
+    const missingCredential = evaluateFirebaseConnect(optedIn, { transport });
+    assert.equal(missingCredential.ok, false);
+    if (!missingCredential.ok) assert.equal(missingCredential.reason, "missing-credential");
+    const locked = createRealtimeDatabase(optedIn, undefined, { transport });
+    assert.equal(locked.mode, "disabled-live");
+    await assert.rejects(() => locked.get("/luna/v1/settings"), PhaseLockedError);
+    assert.equal(calls.length, 0);
+
+    const withToken = createRealtimeDatabase(optedIn, undefined, {
+      transport,
+      authToken: "runtime-token",
+    });
+    assert.equal(withToken.mode, "rest");
+    assert.equal(await withToken.get("/luna/v1/settings"), null);
+    assert.equal(calls.length, 1);
+    assert.match(
+      calls[0] ?? "",
+      /^https:\/\/lunazl-agent-default-rtdb\.asia-southeast1\.firebasedatabase\.app\/luna\/v1\/settings\.json\?auth=runtime-token$/,
+    );
   });
 });

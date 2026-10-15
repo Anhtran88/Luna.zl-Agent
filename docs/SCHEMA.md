@@ -28,7 +28,17 @@ Mỗi giá trị là một envelope:
 
 ## Firebase live
 
-Adapter REST có trong `src/luna/firebase-rtdb.ts`. Process mặc định không tạo client đó. Muốn gọi REST phải có đủ URL `*.firebasedatabase.app` hoặc `*.firebaseio.com`, cờ live, một REST token trong bộ nhớ, và một transport do caller tiêm vào. Service account JSON không phải REST token và không được gửi. App server không tiêm transport, nên không mở socket.
+## Firebase project lunazl-agent
+
+URL công khai, không phải secret:
+
+`https://lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app`
+
+Biến mẫu nằm trong [.env.example](../.env.example). `FIREBASE_LIVE_ENABLED` mặc định `false`. Khi tắt, factory trả memory adapter dù URL đã có. Khi bật, process này vẫn không tự kết nối: thiếu REST credential hoặc transport thì adapter khóa và không gọi mạng. Service account JSON không được gửi đi.
+
+Rules mẫu ở [firebase/database.rules.json](../firebase/database.rules.json) là deny đọc và ghi. File này không được deploy và không yêu cầu mở public access.
+
+Adapter REST có trong `src/luna/firebase-rtdb.ts`. Host vùng `*.region.firebasedatabase.app` được nhận dạng, nhưng app server không tiêm transport.
 
 ## Việc chưa làm
 

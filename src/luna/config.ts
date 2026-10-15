@@ -26,6 +26,11 @@ export interface NineRouterPublicConfig {
   maxRetries: number;
 }
 
+/** Public project coordinates. Not a credential. */
+export const LUNAZL_FIREBASE_PROJECT_ID = "lunazl-agent";
+export const LUNAZL_FIREBASE_DATABASE_URL =
+  "https://lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app";
+
 export const DEFAULT_NINE_ROUTER_BASE_URL = "http://127.0.0.1:20128/v1";
 
 export const DEFAULT_MODEL_ALIASES: Record<string, string> = {
@@ -81,7 +86,7 @@ export function loadFirebasePublicConfig(env: Env): FirebasePublicConfig {
     databaseUrl,
     credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON",
     credentialConfigured: hasSecret(env.FIREBASE_SERVICE_ACCOUNT_JSON),
-    liveRequested: env.LUNA_FIREBASE_LIVE === "true",
+    liveRequested: env.FIREBASE_LIVE_ENABLED === "true" || env.LUNA_FIREBASE_LIVE === "true",
     liveEnabled: false,
   };
 }

@@ -64,9 +64,10 @@ Router tương thích cách đặt tên của 9Router:
 
 `RealtimeDatabase` có `get`, `set`, `push`, `update`, `remove`, `listen`.
 
-- `MemoryRealtimeDatabase` dùng cho demo và test.
-- `PhaseLockedFirebaseAdapter` là adapter live. Mọi method thất bại mà không mở socket.
-- `LUNA_FIREBASE_LIVE=true` chọn adapter khóa, không fallback im lặng sang bộ nhớ.
+- `MemoryRealtimeDatabase` là mặc định cho local và test, kể cả khi URL project đã được khai báo.
+- `PhaseLockedFirebaseAdapter` được chọn khi `FIREBASE_LIVE_ENABLED=true` hoặc alias `LUNA_FIREBASE_LIVE=true` nhưng thiếu URL https chính thức, REST credential, hoặc transport. Không mở socket.
+- Project công khai đã ghi nhận: `lunazl-agent`, URL `https://lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app`. Đây không phải secret.
+- Rules mẫu deny `.read` và `.write`. Không deploy và không mở public access.
 - Config công khai chỉ chứa host, project id và cờ `credentialConfigured`. Giá trị secret không được copy vào object trả về.
 
 ## Browser
@@ -82,6 +83,7 @@ Xem [.env.example](.env.example). Tên biến:
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_DATABASE_URL`
 - `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `FIREBASE_LIVE_ENABLED`
 - `LUNA_FIREBASE_LIVE`
 - `NINE_ROUTER_BASE_URL`
 - `NINE_ROUTER_API_KEY`
@@ -94,7 +96,7 @@ URL có userinfo hoặc query bị từ chối để secret không nằm trong c
 | Phase | Việc                                       | Cần chủ repo                                   |
 | ----- | ------------------------------------------ | ---------------------------------------------- |
 | 0/1   | Bootstrap, port, mock, test                | Không, đang làm                                |
-| 2     | Firebase RTDB thật sau cổng duyệt          | Chọn project và người giữ credential           |
+| 2     | Schema v1 và URL project lunazl-agent, live vẫn khóa | Người giữ REST credential trước khi cho phép connect |
 | 3     | 9Router live                               | Quyết định chi phí và provider                 |
 | 4     | Adapter browser thật, vẫn dry-run mặc định | Chính sách duyệt thao tác trình duyệt          |
 | 5     | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |

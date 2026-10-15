@@ -23,7 +23,12 @@ export interface FirebaseConnectInput {
   authToken?: string;
 }
 
-const FIREBASE_HOST = /^[a-z0-9-]+\.(firebasedatabase\.app|firebaseio\.com)$/i;
+const FIREBASE_HOST =
+  /^[a-z0-9-]+(?:\.[a-z0-9-]+)?\.firebasedatabase\.app$|^[a-z0-9-]+\.firebaseio\.com$/i;
+
+export function isOfficialFirebaseHost(host: string): boolean {
+  return FIREBASE_HOST.test(host);
+}
 
 export type FirebaseConnectDecision =
   | { ok: false; reason: string }
@@ -43,8 +48,11 @@ export function evaluateFirebaseConnect(
   if (!config.databaseUrl || !config.databaseUrlHost) {
     return { ok: false, reason: "missing-database-url" };
   }
-  if (!FIREBASE_HOST.test(config.databaseUrlHost)) {
+  if (!config.databaseUrl.startsWith("https://") || !isOfficialFirebaseHost(config.databaseUrlHost)) {
     return { ok: false, reason: "host-not-firebase" };
+  }
+  if (!config.credentialConfigured && !connect?.authToken?.trim()) {
+    return { ok: false, reason: "missing-credential" };
   }
   if (!connect?.transport) return { ok: false, reason: "missing-transport" };
   const token = connect.authToken?.trim() ?? "";

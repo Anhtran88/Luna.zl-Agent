@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { LunaError } from "./domain.ts";
 import {
   DEFAULT_NINE_ROUTER_BASE_URL,
+  LUNAZL_FIREBASE_DATABASE_URL,
   loadFirebasePublicConfig,
   loadNineRouterPublicConfig,
 } from "./config.ts";
@@ -64,5 +65,13 @@ describe("public config", () => {
     assert.match(text, /FIREBASE_SERVICE_ACCOUNT_JSON=/);
     assert.match(text, /NINE_ROUTER_API_KEY=/);
     assert.match(text, /LUNA_ALLOW_LIVE_MODELS=false/);
+    assert.match(text, /FIREBASE_LIVE_ENABLED=false/);
+    assert.match(text, new RegExp(LUNAZL_FIREBASE_DATABASE_URL.replaceAll(".", "\\.")));
+    assert.doesNotMatch(text, /[?&]auth=/);
+    const rules = JSON.parse(
+      readFileSync(new URL("../../firebase/database.rules.json", import.meta.url), "utf8"),
+    ) as { rules: { ".read": boolean; ".write": boolean } };
+    assert.equal(rules.rules[".read"], false);
+    assert.equal(rules.rules[".write"], false);
   });
 });
