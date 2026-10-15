@@ -1,6 +1,6 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 3 chạy flow dry-run có kiểm soát: tạo tác vụ, planner, duyệt, thực thi mô phỏng, audit và trạng thái kết thúc. Firebase live và 9Router live vẫn tắt. Không đăng nhập Zalo hay eOffice.
+Bảng điều khiển Luna. Phase 8 chuẩn bị staging ở chế độ dry-run và kết luận NO-GO. Firebase, 9Router và browser vẫn locked. Không deploy và không đăng nhập Zalo hay eOffice.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
@@ -18,7 +18,13 @@ npm test
 npm run lint
 npm run typecheck
 npm run build
+npm run deploy:dry-run
+npm run security:check
+npm run readiness
+npm run staging:check
 ```
+
+`readiness` và `staging:check` đều kết luận NO-GO khi thiếu xác nhận của chủ repo. Không gửi telemetry và không gọi mạng. Runbook staging: [docs/STAGING.md](docs/STAGING.md).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -36,7 +42,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh làm việc hiện tại cho Phase 3 là `phase-3-controlled-integration`, tách từ `phase-2-foundations`. Draft Phase 2 vẫn là [pull/2](https://github.com/Anhtran88/Luna.zl-Agent/pull/2). Không merge từ các phase này. Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 7 vẫn là draft. Phase 8 làm trên `phase-8-staging-readiness` và chưa merge. Runbook nằm ở [docs/STAGING.md](docs/STAGING.md). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

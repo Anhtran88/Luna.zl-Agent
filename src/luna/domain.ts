@@ -2,7 +2,7 @@
 
 export const LUNA_PHASE = "2-foundations" as const;
 /** Visible release. Stored schema phase stays v1-compatible. */
-export const LUNA_RELEASE = "3-controlled" as const;
+export const LUNA_RELEASE = "8-staging" as const;
 
 export class LunaError extends Error {
   readonly code: string;
@@ -170,6 +170,33 @@ export interface ControlPlaneSnapshot {
       active: "mock";
       stubs: Array<"playwright" | "skyvern" | "browser-use">;
     };
+  };
+  deployment: {
+    target: "local" | "staging" | "production";
+    mode: "dry-run";
+    productionDeployed: false;
+    network: false;
+    blocked: boolean;
+  };
+  security: {
+    phaseLock: true;
+    firebaseRules: "deny-all";
+    rateLimit: "local";
+    liveEnabled: false;
+    productionDeploy: false;
+  };
+  readiness: {
+    decision: "NO-GO";
+    technicalScore: number;
+    ownerMissing: number;
+    network: false;
+    productionDeployed: false;
+  };
+  staging: {
+    decision: "NO-GO" | "LOCAL-REHEARSAL-ONLY";
+    networkDeploy: false;
+    productionDeployed: false;
+    blockers: number;
   };
 }
 
