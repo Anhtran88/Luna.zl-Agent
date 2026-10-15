@@ -103,9 +103,10 @@ URL có userinfo hoặc query bị từ chối để secret không nằm trong c
 | 6     | Security hardening local                   | Không mở mạng, không đổi rules trên console    |
 | 7     | Production readiness, mặc định NO-GO       | Staging, credential, ngân sách, policy         |
 | 8     | Staging readiness, mặc định NO-GO          | URL, chủ môi trường, credential, ngân sách    |
-| 9     | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
+| 9     | Production go/no-go, mặc định NO-GO        | Sign-off, ngân sách, pháp lý, policy           |
+| 10    | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
 
-Phase 9 không bắt đầu chỉ vì các port đã có. Phase 8 không gọi mạng dù các cờ xác nhận được bật.
+Phase 10 không bắt đầu chỉ vì các port đã có. Phase 9 không cấp quyền deploy dù sign-off trên giấy đã đủ.
 
 ## Quyết định kỹ thuật đã chốt
 
@@ -155,4 +156,4 @@ Mô hình đe doạ, ranh giới tin cậy và rollback sự cố: [docs/SECURIT
 
 ## GitHub
 
-`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 7 vẫn là draft. Phase 8 ở `phase-8-staging-readiness` và giữ staging lẫn production ở NO-GO. Không đưa token vào source.
+`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 8 vẫn là draft. Phase 9 ở `phase-9-production-readiness` và giữ production ở NO-GO. Không đưa token vào source.

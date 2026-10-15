@@ -1,6 +1,6 @@
 # Staging runbook Phase 8
 
-Quyết định hiện tại: **NO-GO**. Không deploy staging có mạng và không deploy production.
+Quyết định staging hiện tại: **NO-GO**. Production ở Phase 9 cũng là **NO-GO**. Không deploy staging có mạng và không deploy production. Xem [RELEASE.md](RELEASE.md).
 
 `LOCAL-REHEARSAL-ONLY` chỉ xuất hiện khi mọi cổng dưới đây đều pass và URL là loopback. Trạng thái đó vẫn là dry-run: `executed: false`, `networkDeploy: false`, chi phí $0.
 

@@ -28,6 +28,7 @@ import {
 import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
 import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
 import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
+import { assessProduction, summarizeProduction, type ProductionSummary } from "./production-gate.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -47,6 +48,7 @@ export interface ControlPlaneDeps {
   deployment: DeployPosture;
   readiness: ReadinessSummary;
   staging: StagingSummary;
+  production: ProductionSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -82,6 +84,7 @@ export class LunaControlPlane {
       deployment: partial?.deployment ?? describeDeployPosture(env),
       readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
       staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
+      production: partial?.production ?? summarizeProduction(assessProduction({ env })),
     });
   }
 
@@ -283,7 +286,13 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode, this.deps.deployment, this.deps.readiness, this.deps.staging),
+      modules: moduleCatalog(
+        firebase.mode,
+        this.deps.deployment,
+        this.deps.readiness,
+        this.deps.staging,
+        this.deps.production,
+      ),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -318,6 +327,7 @@ export class LunaControlPlane {
       security: SECURITY_POSTURE,
       readiness: this.deps.readiness,
       staging: this.deps.staging,
+      production: this.deps.production,
     };
   }
 
@@ -370,13 +380,14 @@ function moduleCatalog(
   deployment: DeployPosture,
   readiness: ReadinessSummary,
   staging: StagingSummary,
+  production: ProductionSummary,
 ): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 8. Staging và production đều chưa được deploy.",
+      detail: "Bảng điều khiển Phase 9. Production là NO-GO và chưa được deploy.",
     },
     {
       id: "agent",
@@ -436,6 +447,12 @@ function moduleCatalog(
       name: "Staging",
       state: "locked",
       detail: `${staging.decision}. ${staging.blockers} điều kiện còn mở. Không gọi mạng.`,
+    },
+    {
+      id: "production",
+      name: "Production gate",
+      state: "locked",
+      detail: `NO-GO. Sign-off ${production.signOffComplete ? "đủ trên giấy" : "chưa đủ"}. Không cấp quyền deploy.`,
     },
   ];
 }

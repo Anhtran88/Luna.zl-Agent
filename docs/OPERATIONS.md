@@ -1,15 +1,16 @@
-# Vận hành Phase 8
+# Vận hành Phase 9
 
-Phase 8 chuẩn bị staging. Kết luận mặc định là NO-GO. Không publish và không bật live.
+Phase 9 kiểm tra go/no-go production. Kết luận là NO-GO. Không publish và không bật live.
 
 ```bash
+npm run production:check
 npm run staging:check
 npm run readiness
 npm run security:check
 npm run deploy:dry-run
 ```
 
-Runbook: [STAGING.md](STAGING.md). Readiness: [READINESS.md](READINESS.md). An ninh: [SECURITY.md](SECURITY.md).
+Hồ sơ: [RELEASE.md](RELEASE.md). Sự cố: [INCIDENT.md](INCIDENT.md). Rollback: [ROLLBACK.md](ROLLBACK.md).
 
 ## Môi trường
 

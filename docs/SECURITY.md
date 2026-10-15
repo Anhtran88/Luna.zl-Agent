@@ -1,6 +1,6 @@
 # An ninh Phase 6
 
-Phase 6 siết an ninh local. Phase 7 kết luận production là NO-GO. Phase 8 thêm cổng staging nhưng không mở mạng và không đổi rules trên console. Xem [STAGING.md](STAGING.md).
+Phase 6 siết an ninh local. Phase 7 đến 9 giữ production ở NO-GO. Phase 9 không mở mạng, không đổi rules trên console và không cấp quyền deploy. Xem [RELEASE.md](RELEASE.md).
 
 ## Threat model
 
