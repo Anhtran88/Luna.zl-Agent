@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { LunaControlPlane } from "../control-plane.ts";
 import { LunaError, type CommandResult } from "../domain.ts";
+import { guardLocalRequest, parseCreateTaskInput, redactAuditDetail } from "../security.ts";
 
 let plane: LunaControlPlane | undefined;
 
@@ -21,11 +22,16 @@ async function run<T>(
       return {
         ok: false,
         code: error.code,
-        message: error.message,
+        message: redactAuditDetail(error.message).slice(0, 240) || "Không xử lý được yêu cầu.",
         snapshot: current.snapshot(),
       };
     }
-    throw error;
+    return {
+      ok: false,
+      code: "INTERNAL",
+      message: "Không xử lý được yêu cầu.",
+      snapshot: current.snapshot(),
+    };
   }
 }
 
@@ -49,22 +55,14 @@ function readId(input: unknown, key: string, pattern: RegExp): string {
 }
 
 export const getSnapshotFn = createServerFn({ method: "GET" }).handler(async () => {
+  guardLocalRequest("snapshot");
   return getControlPlane().snapshot();
 });
 
 export const createTaskFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => {
-    const body = readObject(input);
-    if (body.mode === "live") {
-      throw new Error("API Phase 0/1 không nhận chế độ live.");
-    }
-    const goal = typeof body.goal === "string" ? body.goal.trim() : "";
-    const title = typeof body.title === "string" ? body.title.trim() : "";
-    if (goal.length < 3 || goal.length > 2000) {
-      throw new Error("Mục tiêu cần từ 3 đến 2000 ký tự.");
-    }
-    if (title.length > 120) throw new Error("Tiêu đề quá dài.");
-    return { goal, title };
+    guardLocalRequest("create-task");
+    return parseCreateTaskInput(input);
   })
   .handler(async ({ data }) => {
     return run((current) =>
@@ -77,15 +75,19 @@ export const createTaskFn = createServerFn({ method: "POST" })
   });
 
 export const planTaskFn = createServerFn({ method: "POST" })
-  .validator((input: unknown) => ({ taskId: readId(input, "taskId", /^task_[\w-]+$/) }))
+  .validator((input: unknown) => {
+    guardLocalRequest("plan-task");
+    return { taskId: readId(input, "taskId", /^task_[\w-]+$/) };
+  })
   .handler(async ({ data }) => run((current) => current.planTask(data.taskId)));
 
 export const decideApprovalFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => {
     const body = readObject(input);
+    guardLocalRequest("decide-approval");
     const approvalId = readId(body, "approvalId", /^approval_[\w-]+$/);
     const decision = approvalDecision(body.decision);
-    const note = typeof body.note === "string" ? body.note.slice(0, 280) : undefined;
+    const note = typeof body.note === "string" ? redactAuditDetail(body.note).slice(0, 280) : undefined;
     return { approvalId, decision, note };
   })
   .handler(async ({ data }) => {
@@ -93,9 +95,15 @@ export const decideApprovalFn = createServerFn({ method: "POST" })
   });
 
 export const executeTaskFn = createServerFn({ method: "POST" })
-  .validator((input: unknown) => ({ taskId: readId(input, "taskId", /^task_[\w-]+$/) }))
+  .validator((input: unknown) => {
+    guardLocalRequest("execute-task");
+    return { taskId: readId(input, "taskId", /^task_[\w-]+$/) };
+  })
   .handler(async ({ data }) => run((current) => current.execute(data.taskId)));
 
 export const cancelTaskFn = createServerFn({ method: "POST" })
-  .validator((input: unknown) => ({ taskId: readId(input, "taskId", /^task_[\w-]+$/) }))
+  .validator((input: unknown) => {
+    guardLocalRequest("cancel-task");
+    return { taskId: readId(input, "taskId", /^task_[\w-]+$/) };
+  })
   .handler(async ({ data }) => run((current) => current.cancel(data.taskId)));
