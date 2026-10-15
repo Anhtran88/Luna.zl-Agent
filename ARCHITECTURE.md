@@ -109,6 +109,14 @@ Phase 5 không bắt đầu chỉ vì các port đã có. Không có hành độ
 - Phase lock là hằng hành vi, không phải nút trên UI.
 - Tiếng Việt trên bàn điều khiển vì vận hành được mô tả bằng tiếng Việt.
 
+## Phase 2 foundations
+
+Persistence đi qua `LunaStore`. Control plane không ghi Firebase SDK và không mở socket. `MemoryLunaStore` là mặc định. `FirebaseLunaStore` chỉ nói chuyện với port `RealtimeDatabase`.
+
+Model Router đăng ký provider `mock` và `nine-router`. Mọi `complete` của router chọn mock. Policy timeout/retry nằm trên config công khai. `retriesExecuted` luôn là 0 ở phase này. Usage có `estimatedCostUsd: 0` và `billed: false`. API key không được copy vào object config.
+
+Chi tiết path và quy tắc migration: [docs/SCHEMA.md](docs/SCHEMA.md).
+
 ## GitHub
 
 Nhánh làm việc là `phase-0-1-bootstrap`. Remote chính thức là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Draft PR [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1) vào `main` vẫn để mở, chưa merge. Khảo sát lúc repo trống nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.

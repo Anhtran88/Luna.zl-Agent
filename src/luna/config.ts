@@ -5,10 +5,12 @@ type Env = Record<string, string | undefined>;
 export interface FirebasePublicConfig {
   projectId: string | null;
   databaseUrlHost: string | null;
+  /** Origin only. No userinfo, path, query, or credential. */
+  databaseUrl: string | null;
   credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON";
   credentialConfigured: boolean;
   liveRequested: boolean;
-  /** Always false in Phase 0/1. A request to go live does not open a client. */
+  /** Always false here. A live flag does not open a socket by itself. */
   liveEnabled: false;
 }
 
@@ -20,6 +22,8 @@ export interface NineRouterPublicConfig {
   liveEnabled: false;
   aliases: Record<string, string>;
   combos: Record<string, string[]>;
+  timeoutMs: number;
+  maxRetries: number;
 }
 
 export const DEFAULT_NINE_ROUTER_BASE_URL = "http://127.0.0.1:20128/v1";
@@ -36,6 +40,12 @@ export const DEFAULT_MODEL_COMBOS: Record<string, string[]> = {
 function blankToNull(value: string | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function clampInt(raw: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(parsed)));
 }
 
 function hasSecret(value: string | undefined): boolean {
@@ -60,14 +70,15 @@ function assertPublicHttpUrl(raw: string, envName: string): URL {
 
 export function loadFirebasePublicConfig(env: Env): FirebasePublicConfig {
   const projectId = blankToNull(env.FIREBASE_PROJECT_ID);
-  const databaseUrl = blankToNull(env.FIREBASE_DATABASE_URL);
-  const databaseUrlHost = databaseUrl
-    ? assertPublicHttpUrl(databaseUrl, "FIREBASE_DATABASE_URL").host
+  const databaseUrlRaw = blankToNull(env.FIREBASE_DATABASE_URL);
+  const databaseUrl = databaseUrlRaw
+    ? assertPublicHttpUrl(databaseUrlRaw, "FIREBASE_DATABASE_URL").origin
     : null;
 
   return {
     projectId,
-    databaseUrlHost,
+    databaseUrlHost: databaseUrl ? new URL(databaseUrl).host : null,
+    databaseUrl,
     credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON",
     credentialConfigured: hasSecret(env.FIREBASE_SERVICE_ACCOUNT_JSON),
     liveRequested: env.LUNA_FIREBASE_LIVE === "true",
@@ -88,5 +99,7 @@ export function loadNineRouterPublicConfig(env: Env): NineRouterPublicConfig {
     liveEnabled: false,
     aliases: { ...DEFAULT_MODEL_ALIASES },
     combos: { ...DEFAULT_MODEL_COMBOS },
+    timeoutMs: clampInt(env.LUNA_MODEL_TIMEOUT_MS, 15_000, 1_000, 60_000),
+    maxRetries: clampInt(env.LUNA_MODEL_MAX_RETRIES, 0, 0, 2),
   };
 }

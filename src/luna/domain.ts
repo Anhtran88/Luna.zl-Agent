@@ -1,6 +1,6 @@
 /** Luna Phase 0/1 domain types. No I/O and no secrets. */
 
-export const LUNA_PHASE = "0.1" as const;
+export const LUNA_PHASE = "2-foundations" as const;
 
 export class LunaError extends Error {
   readonly code: string;
@@ -93,6 +93,17 @@ export interface ApprovalRequest {
   note?: string;
 }
 
+export interface AgentRun {
+  id: string;
+  taskId: string;
+  status: "completed" | "refused" | "blocked";
+  startedAt: string;
+  finishedAt: string;
+  /** Phase 2 foundations never execute a live run. */
+  dryRun: true;
+  stepOutcomes: StepResult[];
+}
+
 export interface AuditEvent {
   id: string;
   at: string;
@@ -101,7 +112,7 @@ export interface AuditEvent {
   action: string;
   outcome: AuditOutcome;
   detail: string;
-  /** Phase 0/1 invariant: every event is a dry-run. Nothing external ran. */
+  /** Every persisted event is a dry-run. Nothing external ran. */
   dryRun: true;
 }
 
@@ -123,6 +134,8 @@ export interface ModuleStatus {
 export interface ControlPlaneSnapshot {
   phase: typeof LUNA_PHASE;
   phaseLock: true;
+  schemaVersion: 1;
+  storeMode: "memory" | "firebase";
   generatedAt: string;
   modules: ModuleStatus[];
   tasks: AgentTask[];
@@ -130,7 +143,7 @@ export interface ControlPlaneSnapshot {
   audit: AuditEvent[];
   adapters: {
     firebase: {
-      mode: "memory" | "disabled-live";
+      mode: "memory" | "disabled-live" | "rest";
       liveRequested: boolean;
       liveEnabled: false;
       credentialConfigured: boolean;
@@ -144,6 +157,9 @@ export interface ControlPlaneSnapshot {
       liveRequested: boolean;
       liveEnabled: false;
       aliases: string[];
+      timeoutMs: number;
+      maxRetries: number;
+      estimatedCostUsd: 0;
     };
     browser: {
       active: "mock";
@@ -173,10 +189,11 @@ export function randomIds(): Ids {
 }
 
 export function sequenceIds(): Ids {
-  let n = 0;
+  const counts = new Map<string, number>();
   return {
     next(prefix: string) {
-      n += 1;
+      const n = (counts.get(prefix) ?? 0) + 1;
+      counts.set(prefix, n);
       return `${prefix}_${n}`;
     },
   };

@@ -17,6 +17,13 @@ export interface ModelInfo {
   description: string;
 }
 
+export interface UsageMetadata {
+  inputTokens: number;
+  outputTokens: number;
+  estimatedCostUsd: 0;
+  billed: false;
+}
+
 export interface ModelCompletion {
   providerId: "mock" | "nine-router";
   model: string;
@@ -24,6 +31,7 @@ export interface ModelCompletion {
   dryRun: true;
   network: false;
   notes: string[];
+  usage: UsageMetadata;
 }
 
 export interface ModelProvider {
@@ -65,6 +73,25 @@ export function resolveModelRoute(
   return { providerId: "mock", resolvedModel: resolved, notes };
 }
 
+function estimateTokens(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return Math.max(1, Math.ceil(trimmed.length / 4));
+}
+
+function usageFor(request: ModelCompletionRequest, content: string): UsageMetadata {
+  const inputTokens = request.messages.reduce(
+    (sum, message) => sum + estimateTokens(message.content),
+    0,
+  );
+  return {
+    inputTokens,
+    outputTokens: estimateTokens(content),
+    estimatedCostUsd: 0,
+    billed: false,
+  };
+}
+
 export class MockModelProvider implements ModelProvider {
   readonly id = "mock";
   readonly kind = "mock" as const;
@@ -85,13 +112,15 @@ export class MockModelProvider implements ModelProvider {
   }
 
   async complete(request: ModelCompletionRequest): Promise<ModelCompletion> {
+    const content = `Mock ${request.model} không gọi mạng. Số tin nhắn: ${request.messages.length}.`;
     return {
       providerId: "mock",
       model: request.model,
-      content: `Mock ${request.model} không gọi mạng. Số tin nhắn: ${request.messages.length}.`,
+      content,
       dryRun: true,
       network: false,
       notes: ["provider:mock", "network:blocked"],
+      usage: usageFor(request, content),
     };
   }
 }
@@ -130,12 +159,35 @@ export class NineRouterProvider implements ModelProvider {
   }
 }
 
+export class ModelProviderRegistry {
+  private readonly providers = new Map<string, ModelProvider>();
+
+  register(provider: ModelProvider): void {
+    this.providers.set(provider.id, provider);
+  }
+
+  require(id: string): ModelProvider {
+    const provider = this.providers.get(id);
+    if (!provider) throw new PhaseLockedError(`Không có provider ${id}.`);
+    return provider;
+  }
+
+  ids(): string[] {
+    return [...this.providers.keys()];
+  }
+}
+
 export class ModelRouter {
   private readonly mock = new MockModelProvider();
+  private readonly locked: NineRouterProvider;
   private readonly config: NineRouterPublicConfig;
+  readonly registry = new ModelProviderRegistry();
 
-  constructor(config: NineRouterPublicConfig) {
+  constructor(config: NineRouterPublicConfig, fetchImpl?: typeof fetch) {
     this.config = config;
+    this.locked = new NineRouterProvider(config, fetchImpl);
+    this.registry.register(this.mock);
+    this.registry.register(this.locked);
   }
 
   resolve(model: string): ResolvedModelRoute {
@@ -148,8 +200,18 @@ export class ModelRouter {
 
   async complete(request: ModelCompletionRequest): Promise<ModelCompletion> {
     const route = this.resolve(request.model);
-    const completion = await this.mock.complete({ ...request, model: route.resolvedModel });
-    return { ...completion, notes: route.notes };
+    const provider = this.registry.require("mock");
+    const completion = await provider.complete({ ...request, model: route.resolvedModel });
+    return {
+      ...completion,
+      notes: [
+        ...route.notes,
+        `timeoutMs:${this.config.timeoutMs}`,
+        `retriesConfigured:${this.config.maxRetries}`,
+        "retriesExecuted:0",
+        "billed:false",
+      ],
+    };
   }
 }
 

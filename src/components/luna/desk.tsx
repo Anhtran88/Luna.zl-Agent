@@ -83,7 +83,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Firebase</dt>
-              <dd className="mt-1 font-medium">{snapshot.adapters.firebase.mode}</dd>
+              <dd className="mt-1 font-medium">
+                {snapshot.adapters.firebase.mode} · schema v{snapshot.schemaVersion}
+              </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Model</dt>
@@ -120,7 +122,10 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                 <p className="font-medium">Phase lock không tắt được từ giao diện này.</p>
                 <p className="mt-1 text-muted">
                   API không nhận chế độ live. Playwright, Skyvern và Browser Use được khai báo nhưng
-                  orchestrator luôn ép về mock.
+                  orchestrator luôn ép về mock. Store {snapshot.storeMode}. Model{" "}
+                  {snapshot.adapters.models.activeProvider}, timeout {snapshot.adapters.models.timeoutMs}{" "}
+                  ms, retry {snapshot.adapters.models.maxRetries}, chi phí $
+                  {snapshot.adapters.models.estimatedCostUsd}.
                 </p>
               </div>
             </div>

@@ -1,9 +1,10 @@
 import { LunaError, PhaseLockedError, randomIds, type Ids } from "./domain.ts";
 import type { FirebasePublicConfig } from "./config.ts";
+import { evaluateFirebaseConnect, FirebaseRtdbClient, type FirebaseConnectInput } from "./firebase-rtdb.ts";
 
 export interface RealtimeDatabase {
   readonly id: string;
-  readonly mode: "memory" | "disabled-live";
+  readonly mode: "memory" | "disabled-live" | "rest";
   get<T>(path: string): Promise<T | null>;
   set(path: string, value: unknown): Promise<void>;
   push(path: string, value: unknown): Promise<string>;
@@ -150,7 +151,10 @@ export class PhaseLockedFirebaseAdapter implements RealtimeDatabase {
 export function createRealtimeDatabase(
   config: FirebasePublicConfig,
   seed?: Record<string, unknown>,
+  connect?: FirebaseConnectInput,
 ): RealtimeDatabase {
-  if (config.liveRequested) return new PhaseLockedFirebaseAdapter();
-  return new MemoryRealtimeDatabase(seed);
+  if (!config.liveRequested) return new MemoryRealtimeDatabase(seed);
+  const decision = evaluateFirebaseConnect(config, connect);
+  if (!decision.ok) return new PhaseLockedFirebaseAdapter();
+  return new FirebaseRtdbClient(decision);
 }

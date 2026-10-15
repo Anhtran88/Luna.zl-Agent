@@ -1,8 +1,8 @@
 # Luna
 
-Bảng điều khiển Phase 0/1 cho agent Luna. Phase này dựng ranh giới module, cổng duyệt, dry-run và nhật ký. Không đăng nhập Zalo hay eOffice, không gửi tin, không ghi dữ liệu thật, không gọi model trả phí.
+Bảng điều khiển Luna. Phase 2 foundations thêm schema persistence và model router có chính sách timeout/retry, nhưng Firebase live và 9Router live vẫn tắt. Không đăng nhập Zalo hay eOffice, không gửi tin, không ghi dữ liệu thật, không gọi model trả phí.
 
-Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md).
+Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
 ## Chạy local
 
@@ -29,12 +29,14 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 - Browser Orchestrator đăng ký Playwright, Skyvern và Browser Use như stub. Mọi lệnh bị ép về mock.
 - Firebase Realtime Database có port, adapter bộ nhớ và adapter live bị khóa.
 - Bước nhạy cảm cần approval. Live bị từ chối dù đã duyệt.
+- Phase 2: schema v1 cho task, approval, audit, run và settings. Store mặc định là bộ nhớ. REST Firebase chỉ chạy khi test tiêm transport.
+- Model Router có registry, alias, timeout và retry. Retry không được gửi ra mạng. Chi phí mock là $0.
 
 ## GitHub
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh làm việc: `phase-0-1-bootstrap`. Draft PR: [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1), base `main`. Không merge từ phase này. Không đưa token vào source hay `.env.example`.
+Nhánh làm việc hiện tại cho Phase 2 là `phase-2-foundations`, tách từ `phase-0-1-bootstrap`. Draft Phase 0/1 vẫn là [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1). Không merge từ các phase này. Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

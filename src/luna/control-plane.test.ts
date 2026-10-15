@@ -10,7 +10,7 @@ import { TASK_PRESETS } from "./presets.ts";
 
 function planeWith(
   firebase = new MemoryRealtimeDatabase(
-    { "/luna/queue": { items: [], phase: "0.1" } },
+    { "/luna/queue": { items: [], phase: "2-foundations" } },
     sequenceIds(),
   ),
 ) {
@@ -32,8 +32,8 @@ function planeWith(
 describe("control plane mock flow", () => {
   it("dry-runs a safe model task without approval", async () => {
     const { plane } = planeWith();
-    const task = plane.createTask({ goal: TASK_PRESETS[0].goal });
-    plane.planTask(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[0].goal });
+    await plane.planTask(task.id);
     const done = await plane.execute(task.id);
     assert.equal(done.status, "dry_run_completed");
     assert.match(
@@ -42,6 +42,9 @@ describe("control plane mock flow", () => {
     );
     const snapshot = plane.snapshot();
     assert.equal(snapshot.phaseLock, true);
+    assert.equal(snapshot.schemaVersion, 1);
+    assert.equal(snapshot.storeMode, "memory");
+    assert.equal(snapshot.adapters.models.estimatedCostUsd, 0);
     assert.equal(snapshot.adapters.models.activeProvider, "mock");
     assert.equal(snapshot.adapters.models.liveEnabled, false);
     assert.ok(snapshot.audit.every((event) => event.dryRun === true));
@@ -49,8 +52,8 @@ describe("control plane mock flow", () => {
 
   it("requires approval for Zalo and still refuses the external action", async () => {
     const { plane, firebase } = planeWith();
-    const task = plane.createTask({ goal: TASK_PRESETS[3].goal });
-    const planned = plane.planTask(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[3].goal });
+    const planned = await plane.planTask(task.id);
     assert.equal(planned.status, "awaiting_approval");
     await assert.rejects(
       () => plane.execute(task.id),
@@ -61,20 +64,20 @@ describe("control plane mock flow", () => {
 
     const approvalId = planned.approvalId;
     assert.ok(approvalId);
-    plane.decideApproval(approvalId, "approved", "Chỉ dry-run.");
+    await plane.decideApproval(approvalId, "approved", "Chỉ dry-run.");
     const done = await plane.execute(task.id);
     assert.equal(done.status, "dry_run_completed");
     const external = done.lastReport?.steps.find((step) => step.kind === "external_mutate");
     assert.equal(external?.outcome, "refused");
     assert.match(external?.summary ?? "", /không gửi tin/);
     assert.equal(await firebase.get("/luna/outbox"), null);
-    assert.deepEqual(await firebase.get("/luna/queue"), { items: [], phase: "0.1" });
+    assert.deepEqual(await firebase.get("/luna/queue"), { items: [], phase: "2-foundations" });
   });
 
   it("blocks a live task even after approval", async () => {
     const { plane } = planeWith();
-    const task = plane.createTask({ goal: "Tóm tắt bằng model mock.", mode: "live" });
-    plane.planTask(task.id);
+    const task = await plane.createTask({ goal: "Tóm tắt bằng model mock.", mode: "live" });
+    await plane.planTask(task.id);
     await assert.rejects(
       () => plane.execute(task.id),
       (error: unknown) => {
@@ -88,13 +91,13 @@ describe("control plane mock flow", () => {
 
   it("refuses to execute or cancel a finished task", async () => {
     const { plane } = planeWith();
-    const task = plane.createTask({ goal: TASK_PRESETS[0].goal });
-    plane.cancel(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[0].goal });
+    await plane.cancel(task.id);
     await assert.rejects(
       () => plane.execute(task.id),
       (error: unknown) => error instanceof LunaError && error.code === "TERMINAL",
     );
-    assert.throws(
+    await assert.rejects(
       () => plane.cancel(task.id),
       (error: unknown) => error instanceof LunaError && error.code === "TERMINAL",
     );
@@ -102,16 +105,16 @@ describe("control plane mock flow", () => {
     assert.ok(plane.snapshot().audit.every((event) => event.dryRun === true));
   });
 
-  it("keeps approval notes short and refuses a second decision", () => {
+  it("keeps approval notes short and refuses a second decision", async () => {
     const { plane } = planeWith();
-    const task = plane.createTask({ goal: TASK_PRESETS[3].goal });
-    const planned = plane.planTask(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[3].goal });
+    const planned = await plane.planTask(task.id);
     const approvalId = planned.approvalId;
     assert.ok(approvalId);
-    const approval = plane.decideApproval(approvalId, "rejected", ` ${"x".repeat(400)} `);
+    const approval = await plane.decideApproval(approvalId, "rejected", ` ${"x".repeat(400)} `);
     assert.equal(approval.note?.length, 280);
     assert.equal(plane.snapshot().tasks[0]?.status, "rejected");
-    assert.throws(
+    await assert.rejects(
       () => plane.decideApproval(approvalId, "approved"),
       (error: unknown) => error instanceof LunaError && error.code === "BAD_STATUS",
     );
@@ -119,8 +122,8 @@ describe("control plane mock flow", () => {
 
   it("firebase read preset stays on the memory queue", async () => {
     const { plane } = planeWith();
-    const task = plane.createTask({ goal: TASK_PRESETS[1].goal });
-    plane.planTask(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[1].goal });
+    await plane.planTask(task.id);
     const done = await plane.execute(task.id);
     const read = done.lastReport?.steps.find((step) => step.kind === "firebase_read");
     assert.match(read?.summary ?? "", /\/luna\/queue/);
@@ -147,8 +150,8 @@ describe("control plane mock flow", () => {
       { LUNA_FIREBASE_LIVE: "true" },
       { clock: fixedClock(), ids: sequenceIds(), firebase: locked },
     );
-    const task = plane.createTask({ goal: TASK_PRESETS[1].goal });
-    plane.planTask(task.id);
+    const task = await plane.createTask({ goal: TASK_PRESETS[1].goal });
+    await plane.planTask(task.id);
     const done = await plane.execute(task.id);
     assert.equal(
       done.lastReport?.steps.find((step) => step.kind === "firebase_read")?.outcome,

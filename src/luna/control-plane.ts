@@ -11,6 +11,7 @@ import {
   randomIds,
   systemClock,
   LUNA_PHASE,
+  type AgentRun,
   type AgentTask,
   type ApprovalRequest,
   type AuditEvent,
@@ -21,10 +22,13 @@ import {
   type ExecutionMode,
   type Ids,
   type ModuleStatus,
+  type StepResult,
 } from "./domain.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
+import { SCHEMA_VERSION } from "./schema.ts";
+import { MemoryLunaStore, type LunaStore } from "./store.ts";
 
 export interface ControlPlaneDeps {
   clock: Clock;
@@ -34,6 +38,7 @@ export interface ControlPlaneDeps {
   browser: BrowserOrchestrator;
   firebaseConfig: FirebasePublicConfig;
   modelConfig: NineRouterPublicConfig;
+  store: LunaStore;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -64,10 +69,11 @@ export class LunaControlPlane {
       browser: partial?.browser ?? createBrowserOrchestrator(),
       firebaseConfig,
       modelConfig,
+      store: partial?.store ?? new MemoryLunaStore(),
     });
   }
 
-  createTask(input: { title?: string; goal: string; mode?: ExecutionMode }): AgentTask {
+  async createTask(input: { title?: string; goal: string; mode?: ExecutionMode }): Promise<AgentTask> {
     const goal = input.goal.trim();
     const title = (input.title?.trim() || goal.slice(0, 72)).trim();
     if (goal.length < 3 || goal.length > 2000) {
@@ -80,6 +86,7 @@ export class LunaControlPlane {
     if (mode !== "dry-run" && mode !== "live") {
       throw new LunaError("VALIDATION", "Chế độ thực thi không hợp lệ.");
     }
+    await this.deps.store.ensureSettings(this.deps.clock.now());
 
     const task: AgentTask = {
       id: this.deps.ids.next("task"),
@@ -91,7 +98,8 @@ export class LunaControlPlane {
       createdAt: this.deps.clock.now(),
     };
     this.tasks.set(task.id, task);
-    this.record({
+    await this.deps.store.saveTask(task);
+    await this.record({
       actor: "operator",
       action: "task.create",
       outcome: "recorded",
@@ -104,7 +112,7 @@ export class LunaControlPlane {
     return task;
   }
 
-  planTask(taskId: string): AgentTask {
+  async planTask(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (task.status !== "draft") {
       throw new LunaError("BAD_STATUS", "Chỉ lập kế hoạch từ trạng thái nháp.");
@@ -131,21 +139,26 @@ export class LunaControlPlane {
     } else {
       task.status = "planned";
     }
-    this.record({
+    await this.record({
       actor: "agent",
       action: "task.plan",
       outcome: "recorded",
       taskId: task.id,
       detail: plan.summary,
     });
+    await this.deps.store.saveTask(task);
+    if (task.approvalId) {
+      const approval = this.approvals.get(task.approvalId);
+      if (approval) await this.deps.store.saveApproval(approval);
+    }
     return task;
   }
 
-  decideApproval(
+  async decideApproval(
     approvalId: string,
     decision: "approved" | "rejected",
     note?: string,
-  ): ApprovalRequest {
+  ): Promise<ApprovalRequest> {
     const approval = this.approvals.get(approvalId);
     if (!approval) throw new LunaError("NOT_FOUND", "Không thấy yêu cầu duyệt.");
     if (approval.status !== "pending") {
@@ -159,29 +172,39 @@ export class LunaControlPlane {
     approval.decidedAt = this.deps.clock.now();
     approval.note = note?.trim().slice(0, 280) || undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
-    this.record({
+    await this.record({
       actor: "operator",
       action: decision === "approved" ? "approval.approve" : "approval.reject",
       outcome: "recorded",
       taskId: task.id,
       detail: approval.note ?? (decision === "approved" ? "Đã duyệt dry-run." : "Đã từ chối."),
     });
+    await this.deps.store.saveApproval(approval);
+    await this.deps.store.saveTask(task);
     return approval;
   }
 
   async execute(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
+    const startedAt = this.deps.clock.now();
     const approval = task.approvalId ? this.approvals.get(task.approvalId) : undefined;
     const gate = decideExecution({ task, approval });
     if (!gate.ok) {
       if (gate.code === "PHASE_LOCK") task.status = "blocked";
-      this.record({
+      await this.record({
         actor: "system",
         action: "task.execute",
         outcome: gate.code === "PHASE_LOCK" ? "refused" : "blocked",
         taskId: task.id,
         detail: gate.message,
       });
+      await this.persistRun(
+        task.id,
+        gate.code === "PHASE_LOCK" ? "refused" : "blocked",
+        [],
+        startedAt,
+      );
+      await this.deps.store.saveTask(task);
       throw new LunaError(gate.code, gate.message);
     }
 
@@ -194,7 +217,7 @@ export class LunaControlPlane {
     task.lastReport = report;
     task.status = "dry_run_completed";
     for (const step of report.steps) {
-      this.record({
+      await this.record({
         actor: "agent",
         action: `step.${step.kind}`,
         outcome: step.outcome === "refused" ? "refused" : "simulated",
@@ -202,17 +225,19 @@ export class LunaControlPlane {
         detail: step.summary,
       });
     }
-    this.record({
+    await this.record({
       actor: "system",
       action: "task.execute",
       outcome: "simulated",
       taskId: task.id,
       detail: "Dry-run hoàn tất. Không có tác động production.",
     });
+    await this.persistRun(task.id, "completed", report.steps, startedAt);
+    await this.deps.store.saveTask(task);
     return task;
   }
 
-  cancel(taskId: string): AgentTask {
+  async cancel(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (
       task.status === "dry_run_completed" ||
@@ -223,21 +248,24 @@ export class LunaControlPlane {
       throw new LunaError("TERMINAL", "Tác vụ đã kết thúc, không hủy được.");
     }
     task.status = "cancelled";
-    this.record({
+    await this.record({
       actor: "operator",
       action: "task.cancel",
       outcome: "recorded",
       taskId: task.id,
       detail: "Operator đã hủy tác vụ trước khi có tác động ngoài.",
     });
+    await this.deps.store.saveTask(task);
     return task;
   }
 
   snapshot(): ControlPlaneSnapshot {
-    const { firebaseConfig, modelConfig, firebase } = this.deps;
+    const { firebaseConfig, modelConfig, firebase, store } = this.deps;
     return {
       phase: LUNA_PHASE,
       phaseLock: true,
+      schemaVersion: SCHEMA_VERSION,
+      storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
       modules: moduleCatalog(firebase.mode),
       tasks: [...this.tasks.values()].reverse(),
@@ -259,6 +287,9 @@ export class LunaControlPlane {
           liveRequested: modelConfig.liveRequested,
           liveEnabled: false,
           aliases: Object.keys(modelConfig.aliases),
+          timeoutMs: modelConfig.timeoutMs,
+          maxRetries: modelConfig.maxRetries,
+          estimatedCostUsd: 0,
         },
         browser: {
           active: "mock",
@@ -274,41 +305,60 @@ export class LunaControlPlane {
     return task;
   }
 
-  private record(input: {
+  private async record(input: {
     actor: Actor;
     action: string;
     outcome: AuditOutcome;
     detail: string;
     taskId?: string;
-  }): void {
-    this.audits.push({
+  }): Promise<void> {
+    const event: AuditEvent = {
       id: this.deps.ids.next("audit"),
       at: this.deps.clock.now(),
       dryRun: true,
       ...input,
+    };
+    this.audits.push(event);
+    await this.deps.store.appendAudit(event);
+  }
+
+  private async persistRun(
+    taskId: string,
+    status: AgentRun["status"],
+    steps: StepResult[],
+    startedAt: string,
+  ): Promise<void> {
+    await this.deps.store.saveRun({
+      id: this.deps.ids.next("run"),
+      taskId,
+      status,
+      startedAt,
+      finishedAt: this.deps.clock.now(),
+      dryRun: true,
+      stepOutcomes: steps,
     });
   }
 }
 
-function moduleCatalog(firebaseMode: "memory" | "disabled-live"): ModuleStatus[] {
+function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển và server functions. Không giữ secret.",
+      detail: "Bảng điều khiển Phase 2. Không giữ secret và không có nút tắt khóa.",
     },
     {
       id: "agent",
       name: "Agent Engine",
       state: "ready",
-      detail: "Task model, planner và executor tách biệt.",
+      detail: "Planner, executor và run được ghi qua persistence port.",
     },
     {
       id: "router",
       name: "Model Router",
       state: "mock",
-      detail: "Tên model kiểu 9Router. Adapter đang chạy là mock.",
+      detail: "Registry, alias, timeout và retry. Adapter đang chạy là mock, chi phí $0.",
     },
     {
       id: "browser",
@@ -320,13 +370,16 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live"): ModuleStatus[]
       id: "firebase",
       name: "Firebase RTDB",
       state: firebaseMode === "memory" ? "memory" : "locked",
-      detail: "Port + adapter bộ nhớ. Live không mở kết nối.",
+      detail:
+        firebaseMode === "rest"
+          ? "REST client chỉ chạy khi test tiêm transport. App này không tự kết nối."
+          : "Schema v1. Mặc định là bộ nhớ. Live không mở socket.",
     },
     {
       id: "governance",
       name: "Approval & Audit",
       state: "ready",
-      detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký.",
+      detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký. phaseLock không ghi tắt được.",
     },
   ];
 }

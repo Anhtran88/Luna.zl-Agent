@@ -33,7 +33,36 @@ describe("model router", () => {
     assert.equal(result.network, false);
     assert.equal(result.dryRun, true);
     assert.equal(result.providerId, "mock");
+    assert.equal(result.usage.billed, false);
+    assert.equal(result.usage.estimatedCostUsd, 0);
     assert.match(result.content, /Mock mock\/luna-planner không gọi mạng/);
+    assert.ok(result.notes.includes("retriesExecuted:0"));
+  });
+
+  it("keeps configured retries local to the mock registry", async () => {
+    let fetches = 0;
+    const router = new ModelRouter(
+      loadNineRouterPublicConfig({ LUNA_MODEL_MAX_RETRIES: "2", LUNA_ALLOW_LIVE_MODELS: "true" }),
+      async () => {
+        fetches += 1;
+        throw new Error("network should not be used");
+      },
+    );
+    assert.deepEqual(router.registry.ids(), ["mock", "nine-router"]);
+    const result = await router.complete({
+      model: "kimi/kimi-k2.6",
+      messages: [{ role: "user", content: "không gọi mạng" }],
+    });
+    assert.equal(result.network, false);
+    assert.equal(result.usage.estimatedCostUsd, 0);
+    assert.ok(result.notes.includes("retriesConfigured:2"));
+    assert.ok(result.notes.includes("retriesExecuted:0"));
+    assert.equal(fetches, 0);
+    await assert.rejects(() => router.registry.require("nine-router").complete({
+      model: "kimi/kimi-k2.6",
+      messages: [],
+    }), PhaseLockedError);
+    assert.equal(fetches, 0);
   });
 
   it("9router provider fails closed before fetch", async () => {

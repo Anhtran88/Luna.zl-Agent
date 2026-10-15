@@ -7,6 +7,7 @@ import {
   PhaseLockedFirebaseAdapter,
   createRealtimeDatabase,
 } from "./firebase.ts";
+import type { RtdbTransport } from "./firebase-rtdb.ts";
 
 describe("firebase realtime port", () => {
   it("stores JSON in memory and rejects unsafe paths", async () => {
@@ -64,5 +65,38 @@ describe("firebase realtime port", () => {
     await assert.rejects(() => db.push("/luna/queue", { a: 1 }), PhaseLockedError);
     await assert.rejects(() => db.update("/luna/queue", { a: 1 }), PhaseLockedError);
     await assert.rejects(() => db.remove("/luna/queue"), PhaseLockedError);
+  });
+
+  it("uses the REST client only with an explicit transport and redacts the token", async () => {
+    const calls: string[] = [];
+    const token = "test-token-value";
+    const transport: RtdbTransport = {
+      async request(input) {
+        calls.push(input.url);
+        if (input.method === "GET") return { status: 401, body: { error: token } };
+        return { status: 200, body: { name: "node_x" } };
+      },
+    };
+    const config = loadFirebasePublicConfig({
+      FIREBASE_DATABASE_URL: "https://luna-dev.firebasedatabase.app/ignored",
+      LUNA_FIREBASE_LIVE: "true",
+    });
+    const blocked = createRealtimeDatabase(config, undefined, {
+      transport,
+      authToken: "{\"private_key\":\"nope\"}",
+    });
+    assert.equal(blocked.mode, "disabled-live");
+    assert.equal(calls.length, 0);
+
+    const client = createRealtimeDatabase(config, undefined, { transport, authToken: token });
+    assert.equal(client.mode, "rest");
+    await assert.rejects(
+      () => client.get("/luna/queue"),
+      (error: unknown) =>
+        error instanceof LunaError && error.code === "NETWORK" && !error.message.includes(token),
+    );
+    assert.equal(calls.length, 1);
+    assert.match(calls[0] ?? "", /https:\/\/luna-dev\.firebasedatabase\.app\/luna\/queue\.json\?auth=/);
+    assert.equal(config.databaseUrl, "https://luna-dev.firebasedatabase.app");
   });
 });
