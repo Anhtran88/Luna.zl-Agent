@@ -25,6 +25,8 @@ import {
   type ModuleStatus,
   type StepResult,
 } from "./domain.ts";
+import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
+import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
@@ -40,6 +42,7 @@ export interface ControlPlaneDeps {
   firebaseConfig: FirebasePublicConfig;
   modelConfig: NineRouterPublicConfig;
   store: LunaStore;
+  deployment: DeployPosture;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -72,6 +75,7 @@ export class LunaControlPlane {
       firebaseConfig,
       modelConfig,
       store: partial?.store ?? new MemoryLunaStore(),
+      deployment: partial?.deployment ?? describeDeployPosture(env),
     });
   }
 
@@ -83,6 +87,9 @@ export class LunaControlPlane {
     }
     if (title.length < 1 || title.length > 120) {
       throw new LunaError("VALIDATION", "Tiêu đề cần từ 1 đến 120 ký tự.");
+    }
+    if (containsSecret(goal) || containsSecret(title)) {
+      throw new LunaError("VALIDATION", "Nội dung không được chứa credential.");
     }
     const mode = input.mode ?? "dry-run";
     if (mode !== "dry-run" && mode !== "live") {
@@ -172,7 +179,7 @@ export class LunaControlPlane {
     }
     approval.status = decision;
     approval.decidedAt = this.deps.clock.now();
-    approval.note = note?.trim().slice(0, 280) || undefined;
+    approval.note = note ? redactAuditDetail(note).slice(0, 280) || undefined : undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
     await this.record({
       actor: "operator",
@@ -270,7 +277,7 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode),
+      modules: moduleCatalog(firebase.mode, this.deps.deployment),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -301,6 +308,8 @@ export class LunaControlPlane {
           stubs: ["playwright", "skyvern", "browser-use"],
         },
       },
+      deployment: this.deps.deployment,
+      security: SECURITY_POSTURE,
     };
   }
 
@@ -322,6 +331,7 @@ export class LunaControlPlane {
       at: this.deps.clock.now(),
       dryRun: true,
       ...input,
+      detail: redactAuditDetail(input.detail),
     };
     this.audits.push(event);
     await this.deps.store.appendAudit(event);
@@ -347,13 +357,16 @@ export class LunaControlPlane {
   }
 }
 
-function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): ModuleStatus[] {
+function moduleCatalog(
+  firebaseMode: "memory" | "disabled-live" | "rest",
+  deployment: DeployPosture,
+): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 3. Không giữ secret và không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 6. Khóa an toàn không tắt được từ giao diện.",
     },
     {
       id: "agent",
@@ -387,6 +400,20 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       name: "Approval & Audit",
       state: "ready",
       detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký. phaseLock không ghi tắt được.",
+    },
+    {
+      id: "deploy",
+      name: "Deployment",
+      state: deployment.blocked ? "locked" : "ready",
+      detail: deployment.blocked
+        ? `${deployment.target} bị chặn. Không publish, không rules, không mạng production.`
+        : `${deployment.target} dry-run. Chưa production và không gọi mạng ngoài.`,
+    },
+    {
+      id: "security",
+      name: "Security",
+      state: "locked",
+      detail: "Rules deny-all, header an toàn, rate-limit local. Live và production vẫn khóa.",
     },
   ];
 }
