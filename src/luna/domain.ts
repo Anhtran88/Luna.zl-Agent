@@ -2,7 +2,7 @@
 
 export const LUNA_PHASE = "2-foundations" as const;
 /** Visible release. Stored schema phase stays v1-compatible. */
-export const LUNA_RELEASE = "3-controlled" as const;
+export const LUNA_RELEASE = "4-controlled" as const;
 
 export class LunaError extends Error {
   readonly code: string;

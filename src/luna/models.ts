@@ -237,6 +237,24 @@ export class ModelRouter {
   }
 }
 
+export interface NineRouterConnectDecision {
+  ok: false;
+  reason: "live-not-requested" | "missing-credential" | "phase-lock";
+  network: false;
+  estimatedCostUsd: 0;
+}
+
+/** Records why a live 9Router call stays closed. Never invokes fetch. */
+export function evaluateNineRouterConnect(config: NineRouterPublicConfig): NineRouterConnectDecision {
+  if (!config.liveRequested) {
+    return { ok: false, reason: "live-not-requested", network: false, estimatedCostUsd: 0 };
+  }
+  if (!config.apiKeyConfigured) {
+    return { ok: false, reason: "missing-credential", network: false, estimatedCostUsd: 0 };
+  }
+  return { ok: false, reason: "phase-lock", network: false, estimatedCostUsd: 0 };
+}
+
 export function createModelRouter(config: NineRouterPublicConfig): ModelRouter {
   return new ModelRouter(config);
 }

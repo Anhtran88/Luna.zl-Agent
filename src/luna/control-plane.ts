@@ -353,7 +353,7 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 3. Không giữ secret và không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 4. Adapter locked hoặc mock. Không có nút tắt khóa.",
     },
     {
       id: "agent",

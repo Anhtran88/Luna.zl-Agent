@@ -129,6 +129,12 @@ Model Router có thể giả lập timeout hoặc unavailable. Số lần thử 
 
 Browser Orchestrator công bố contract cho `mock`, `playwright`, `skyvern` và `browser-use`. Mọi contract có `liveLaunch: false`. Stub không được gọi.
 
+## Phase 4 controlled adapters
+
+Contract nằm ở `src/luna/adapters.ts`. Firebase mặc định là memory và offline. 9Router mặc định là mock, `evaluateNineRouterConnect` không gọi `fetch` dù live được yêu cầu hoặc key được cấu hình. Playwright, Skyvern và Browser Use có `liveLaunch: false`.
+
+Emulator Firebase vẫn là `InProcessRtdbTransport` và từ chối URL production. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 ## GitHub
 
-Nhánh làm việc là `phase-0-1-bootstrap`. Remote chính thức là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Draft PR [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1) vào `main` vẫn để mở, chưa merge. Khảo sát lúc repo trống nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.
+`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 ở `phase-4-controlled-adapters`, draft, chưa merge. Remote là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Không đưa token vào source.
