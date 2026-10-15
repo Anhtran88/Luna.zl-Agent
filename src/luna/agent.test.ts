@@ -28,6 +28,18 @@ describe("planner and gate", () => {
     assert.equal(plan.steps.at(-1)?.requiresApproval, true);
   });
 
+  it("does not treat a negated delete phrase as an external action", () => {
+    const plan = createPlan("Đọc hàng đợi Firebase, không xóa dữ liệu.", deps());
+    assert.equal(
+      plan.steps.some((step) => step.kind === "external_mutate"),
+      false,
+    );
+    assert.equal(
+      plan.steps.some((step) => step.kind === "firebase_read"),
+      true,
+    );
+  });
+
   it("does not treat a negated login phrase as an external action", () => {
     const plan = createPlan("Mô phỏng trình duyệt, không đăng nhập.", deps());
     assert.equal(

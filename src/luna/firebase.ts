@@ -103,10 +103,10 @@ export class MemoryRealtimeDatabase implements RealtimeDatabase {
 
   private emit(path: string): void {
     for (const [key, set] of this.listeners) {
-      if (key === path || path.startsWith(`${key}/`)) {
-        const value = this.read(key);
-        for (const listener of set) listener(value);
-      }
+      const affected = key === path || path.startsWith(`${key}/`) || key.startsWith(`${path}/`);
+      if (!affected) continue;
+      const value = this.read(key);
+      for (const listener of set) listener(value);
     }
   }
 }

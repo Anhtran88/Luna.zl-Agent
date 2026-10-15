@@ -157,7 +157,7 @@ export class LunaControlPlane {
     }
     approval.status = decision;
     approval.decidedAt = this.deps.clock.now();
-    approval.note = note?.trim() || undefined;
+    approval.note = note?.trim().slice(0, 280) || undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
     this.record({
       actor: "operator",

@@ -22,16 +22,16 @@ export function decideExecution(input: {
 }): ExecutionGate {
   const { task, approval } = input;
 
-  if (!task.plan) {
-    return { ok: false, code: "NO_PLAN", message: "Chưa có kế hoạch để thực thi." };
-  }
-
   if (
     task.status === "cancelled" ||
     task.status === "rejected" ||
     task.status === "dry_run_completed"
   ) {
     return { ok: false, code: "TERMINAL", message: "Tác vụ đã kết thúc." };
+  }
+
+  if (!task.plan) {
+    return { ok: false, code: "NO_PLAN", message: "Chưa có kế hoạch để thực thi." };
   }
 
   if (task.mode === "live") {

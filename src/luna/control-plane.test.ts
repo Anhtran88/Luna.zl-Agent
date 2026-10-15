@@ -86,6 +86,37 @@ describe("control plane mock flow", () => {
     assert.equal(plane.snapshot().audit[0]?.dryRun, true);
   });
 
+  it("refuses to execute or cancel a finished task", async () => {
+    const { plane } = planeWith();
+    const task = plane.createTask({ goal: TASK_PRESETS[0].goal });
+    plane.cancel(task.id);
+    await assert.rejects(
+      () => plane.execute(task.id),
+      (error: unknown) => error instanceof LunaError && error.code === "TERMINAL",
+    );
+    assert.throws(
+      () => plane.cancel(task.id),
+      (error: unknown) => error instanceof LunaError && error.code === "TERMINAL",
+    );
+    assert.equal(plane.snapshot().tasks[0]?.status, "cancelled");
+    assert.ok(plane.snapshot().audit.every((event) => event.dryRun === true));
+  });
+
+  it("keeps approval notes short and refuses a second decision", () => {
+    const { plane } = planeWith();
+    const task = plane.createTask({ goal: TASK_PRESETS[3].goal });
+    const planned = plane.planTask(task.id);
+    const approvalId = planned.approvalId;
+    assert.ok(approvalId);
+    const approval = plane.decideApproval(approvalId, "rejected", ` ${"x".repeat(400)} `);
+    assert.equal(approval.note?.length, 280);
+    assert.equal(plane.snapshot().tasks[0]?.status, "rejected");
+    assert.throws(
+      () => plane.decideApproval(approvalId, "approved"),
+      (error: unknown) => error instanceof LunaError && error.code === "BAD_STATUS",
+    );
+  });
+
   it("firebase read preset stays on the memory queue", async () => {
     const { plane } = planeWith();
     const task = plane.createTask({ goal: TASK_PRESETS[1].goal });

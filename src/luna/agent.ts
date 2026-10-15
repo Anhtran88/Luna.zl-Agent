@@ -37,6 +37,9 @@ function withoutNegations(text: string): string {
     .replace(/không\s+download/gi, " ")
     .replace(/không\s+ghi/gi, " ")
     .replace(/khong\s+ghi/gi, " ")
+    .replace(/không\s+xóa/gi, " ")
+    .replace(/không\s+xoá/gi, " ")
+    .replace(/khong\s+xoa/gi, " ")
     .replace(/\bno login\b/gi, " ");
 }
 const BROWSER =

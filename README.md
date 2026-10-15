@@ -32,9 +32,9 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 ## GitHub
 
-Remote [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent) đang trống khi khảo sát. Branch local là `phase-0-1-bootstrap`. Máy này không push được: không có `GH_TOKEN` hay `GITHUB_TOKEN`, và `gh` chưa đăng nhập. Không nhét token vào repo hay `.env.example`.
+Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Chủ repo xác thực `gh` hoặc cấp quyền ghi bên ngoài source, rồi tự push và mở draft PR vào `main`. Không merge từ phase này.
+Nhánh làm việc: `phase-0-1-bootstrap`. Draft PR: [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1), base `main`. Không merge từ phase này. Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

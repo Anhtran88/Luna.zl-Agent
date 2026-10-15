@@ -111,4 +111,4 @@ Phase 5 không bắt đầu chỉ vì các port đã có. Không có hành độ
 
 ## GitHub
 
-Nhánh làm việc là `phase-0-1-bootstrap`. Remote public đang không có ref. Push và draft PR bị chặn vì không có credential ghi. Chi tiết lệnh xác nhận nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.
+Nhánh làm việc là `phase-0-1-bootstrap`. Remote chính thức là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Draft PR [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1) vào `main` vẫn để mở, chưa merge. Khảo sát lúc repo trống nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.

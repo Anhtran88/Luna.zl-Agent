@@ -31,6 +31,15 @@ describe("firebase realtime port", () => {
     assert.equal(seen, null);
     stop();
 
+    const childId = await db.push("/luna/queue", { name: "child" });
+    let child: unknown = "unset";
+    db.listen(`/luna/queue/${childId}`, (value) => {
+      child = value;
+    });
+    assert.deepEqual(child, { name: "child" });
+    await db.remove("/luna/queue");
+    assert.equal(child, null);
+
     await assert.rejects(
       () => db.get("/luna/../secret"),
       (error: unknown) => error instanceof LunaError && error.code === "PATH",

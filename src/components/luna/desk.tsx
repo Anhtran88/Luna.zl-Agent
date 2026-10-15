@@ -40,6 +40,8 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const trimmedGoal = goal.trim();
+  const goalReady = trimmedGoal.length >= 3 && trimmedGoal.length <= 2000;
 
   const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks[0];
   const approval = snapshot.approvals.find((item) => item.id === selected?.approvalId);
@@ -164,7 +166,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                 <button
                   key={preset.id}
                   type="button"
-                  className="min-h-11 rounded-xl border border-line px-3 text-sm text-fg hover:border-amber"
+                  aria-pressed={preset.goal === goal}
+                  className={
+                    preset.goal === goal
+                      ? "min-h-11 rounded-xl border border-amber px-3 text-sm text-fg"
+                      : "min-h-11 rounded-xl border border-line px-3 text-sm text-fg hover:border-amber"
+                  }
                   onClick={() => setGoal(preset.goal)}
                 >
                   {preset.label}
@@ -178,13 +185,17 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
               id="goal"
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
+              maxLength={2000}
               rows={3}
               className="mt-2 w-full resize-y rounded-2xl border border-line bg-ink px-4 py-3 text-sm leading-6 text-fg outline-none focus-visible:border-amber"
             />
+            {goalReady ? null : (
+              <p className="mt-2 text-sm text-muted">Mục tiêu cần từ 3 đến 2000 ký tự.</p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !goalReady}
                 className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                 onClick={() =>
                   void after(async () => {
@@ -343,6 +354,13 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                           </button>
                         </div>
                       </div>
+                    ) : null}
+
+                    {approval && approval.status !== "pending" ? (
+                      <p className="mt-4 text-sm leading-6 text-muted">
+                        {approval.status === "approved" ? "Đã duyệt dry-run." : "Đã từ chối."}
+                        {approval.note ? ` ${approval.note}` : ""}
+                      </p>
                     ) : null}
 
                     {selected.plan ? (

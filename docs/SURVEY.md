@@ -37,3 +37,11 @@ Không phải lỗi Firebase, 9Router, browser hay credential. Sau khi khôi ph�
 
 - Không tạo được branch trên GitHub, không push, không mở draft PR. Thiếu quyền ghi vào `Anhtran88/Luna.zl-agent`.
 - Việc này không chặn bootstrap và test local.
+
+## Cập nhật 2026-10-15 sau khi có quyền ghi
+
+- `gh auth status` xác nhận tài khoản `Anhtran88`, quyền admin/push. Token không được ghi vào repo.
+- Remote canonical là `https://github.com/Anhtran88/Luna.zl-Agent.git`. URL chữ thường vẫn redirect.
+- Đã push `main` (`37ab7d2`, commit cha rỗng) và `phase-0-1-bootstrap`.
+- Draft PR: https://github.com/Anhtran88/Luna.zl-Agent/pull/1 — chưa merge.
+
