@@ -30,6 +30,16 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 - Firebase Realtime Database có port, adapter bộ nhớ và adapter live bị khóa.
 - Bước nhạy cảm cần approval. Live bị từ chối dù đã duyệt.
 
+## GitHub
+
+Remote [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent) đang trống khi khảo sát. Branch local là `phase-0-1-bootstrap`. Máy này không push được: không có `GH_TOKEN` hay `GITHUB_TOKEN`, và `gh` chưa đăng nhập. Không nhét token vào repo hay `.env.example`.
+
+Chủ repo xác thực `gh` hoặc cấp quyền ghi bên ngoài source, rồi tự push và mở draft PR vào `main`. Không merge từ phase này.
+
+## Preview HTTP 500
+
+Một 500 trong lúc bootstrap là `SyntaxError: 'return' outside of function` khi `src/luna/server/functions.ts` đang sửa dở helper `readId`. File hiện đã kín. `GET /` phải trả 200 và title `Luna · Phase 0/1`. Lỗi không liên quan secret hay dịch vụ production.
+
 ## Không làm trong phase này
 
 - Không automation production trên Zalo hoặc eOffice.

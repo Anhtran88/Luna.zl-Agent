@@ -108,3 +108,7 @@ Phase 5 không bắt đầu chỉ vì các port đã có. Không có hành độ
 - Không bật auth. Control plane là một operator cục bộ.
 - Phase lock là hằng hành vi, không phải nút trên UI.
 - Tiếng Việt trên bàn điều khiển vì vận hành được mô tả bằng tiếng Việt.
+
+## GitHub
+
+Nhánh làm việc là `phase-0-1-bootstrap`. Remote public đang không có ref. Push và draft PR bị chặn vì không có credential ghi. Chi tiết lệnh xác nhận nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.

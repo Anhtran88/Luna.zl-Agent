@@ -25,6 +25,14 @@ Ngày khảo sát: 2026-10-15.
 - Browser Use, Skyvern và Playwright chỉ cần interface ở phase này.
 - Chủ repo sẽ quyết định credential, chi phí và hành động production trước các phase sau.
 
+## Preview HTTP 500
+
+Log dev server ghi nhiều `status: 500` lúc 2026-10-15 khoảng 09:47 UTC, cùng một nguyên nhân:
+
+`SyntaxError: 'return' outside of function` tại `src/luna/server/functions.ts`, helper `readId` bị cắt tạm trong lúc sửa kiểu TypeScript. Vite SSR không biên dịch được route `/`, nên preview nhận 500.
+
+Không phải lỗi Firebase, 9Router, browser hay credential. Sau khi khôi phục hàm, `GET /`, favicon, manifest và CSS đều trả 200. Không cần secret để hết lỗi này.
+
 ## Blocker
 
 - Không tạo được branch trên GitHub, không push, không mở draft PR. Thiếu quyền ghi vào `Anhtran88/Luna.zl-agent`.
