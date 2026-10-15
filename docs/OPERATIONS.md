@@ -1,14 +1,15 @@
-# Vận hành Phase 7
+# Vận hành Phase 8
 
-Phase 7 đánh giá readiness. Production là NO-GO. Không publish và không bật live.
+Phase 8 chuẩn bị staging. Kết luận mặc định là NO-GO. Không publish và không bật live.
 
 ```bash
+npm run staging:check
 npm run readiness
 npm run security:check
 npm run deploy:dry-run
 ```
 
-Báo cáo đầy đủ: [READINESS.md](READINESS.md). An ninh: [SECURITY.md](SECURITY.md).
+Runbook: [STAGING.md](STAGING.md). Readiness: [READINESS.md](READINESS.md). An ninh: [SECURITY.md](SECURITY.md).
 
 ## Môi trường
 

@@ -2,6 +2,8 @@
 
 Quyết định production: **NO-GO**.
 
+Phase 8 thêm cổng staging và vẫn không deploy. Xem [STAGING.md](STAGING.md). Staging có mạng tiếp tục là NO-GO cho đến khi chủ repo xác nhận URL, chủ môi trường, chủ credential và ngân sách.
+
 Điểm kỹ thuật local có thể là 100/100. Điểm đó không cho phép deploy. Cờ xác nhận của chủ repo, dù được đặt, cũng không bật Firebase, 9Router, browser hay production.
 
 ```bash

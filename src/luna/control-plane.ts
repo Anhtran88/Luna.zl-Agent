@@ -27,6 +27,7 @@ import {
 } from "./domain.ts";
 import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
 import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
+import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -45,6 +46,7 @@ export interface ControlPlaneDeps {
   store: LunaStore;
   deployment: DeployPosture;
   readiness: ReadinessSummary;
+  staging: StagingSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -79,6 +81,7 @@ export class LunaControlPlane {
       store: partial?.store ?? new MemoryLunaStore(),
       deployment: partial?.deployment ?? describeDeployPosture(env),
       readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
+      staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
     });
   }
 
@@ -280,7 +283,7 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode, this.deps.deployment, this.deps.readiness),
+      modules: moduleCatalog(firebase.mode, this.deps.deployment, this.deps.readiness, this.deps.staging),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -314,6 +317,7 @@ export class LunaControlPlane {
       deployment: this.deps.deployment,
       security: SECURITY_POSTURE,
       readiness: this.deps.readiness,
+      staging: this.deps.staging,
     };
   }
 
@@ -365,13 +369,14 @@ function moduleCatalog(
   firebaseMode: "memory" | "disabled-live" | "rest",
   deployment: DeployPosture,
   readiness: ReadinessSummary,
+  staging: StagingSummary,
 ): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 7. Readiness production là NO-GO.",
+      detail: "Bảng điều khiển Phase 8. Staging và production đều chưa được deploy.",
     },
     {
       id: "agent",
@@ -425,6 +430,12 @@ function moduleCatalog(
       name: "Readiness",
       state: "locked",
       detail: `NO-GO. Điểm kỹ thuật ${readiness.technicalScore}. Còn ${readiness.ownerMissing} điều kiện chủ repo.`,
+    },
+    {
+      id: "staging",
+      name: "Staging",
+      state: "locked",
+      detail: `${staging.decision}. ${staging.blockers} điều kiện còn mở. Không gọi mạng.`,
     },
   ];
 }

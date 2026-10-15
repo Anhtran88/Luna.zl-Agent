@@ -78,8 +78,8 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </div>
           </div>
           <p className="text-sm leading-6 text-muted">
-            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 7 đánh giá readiness.
-            Production đang NO-GO.
+            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 8 chuẩn bị staging.
+            Staging và production đang NO-GO.
           </p>
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
@@ -106,6 +106,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
               <dt className="text-muted">Readiness</dt>
               <dd className="mt-1 font-medium">
                 {snapshot.readiness.decision} · {snapshot.readiness.technicalScore}/100
+              </dd>
+            </div>
+            <div className="rounded-2xl border border-line bg-panel px-4 py-3">
+              <dt className="text-muted">Staging</dt>
+              <dd className="mt-1 font-medium">
+                {snapshot.staging.decision} · {snapshot.staging.blockers} blocker
               </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
