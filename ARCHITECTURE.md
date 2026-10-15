@@ -100,9 +100,10 @@ URL có userinfo hoặc query bị từ chối để secret không nằm trong c
 | 3     | 9Router live                               | Quyết định chi phí và provider                 |
 | 4     | Adapter browser thật, vẫn dry-run mặc định | Chính sách duyệt thao tác trình duyệt          |
 | 5     | Deployment dry-run local/staging           | Không publish. Staging có mạng cần chủ repo    |
-| 6     | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
+| 6     | Security hardening local                   | Không mở mạng, không đổi rules trên console    |
+| 7     | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
 
-Phase 6 không bắt đầu chỉ vì các port đã có. Không có hành động production nào nếu chủ repo chưa chấp nhận.
+Phase 7 không bắt đầu chỉ vì các port đã có. Không có hành động production nào nếu chủ repo chưa chấp nhận.
 
 ## Quyết định kỹ thuật đã chốt
 
@@ -144,6 +145,12 @@ Ba môi trường được tách bằng `LUNA_DEPLOY_TARGET`: `local`, `staging`
 
 Workflow [`.github/workflows/deploy-dry-run.yml`](.github/workflows/deploy-dry-run.yml) chỉ chạy preflight với quyền `contents: read`.
 
+## Phase 6 security hardening
+
+`src/luna/security.ts` quét secret mà không trả giá trị, buộc Firebase rules deny-all, redact audit và lỗi, và giữ live gate ở `false`. Rate-limit là bộ đếm trong tiến trình. Header an toàn không khoá iframe của preview.
+
+Mô hình đe doạ, ranh giới tin cậy và rollback sự cố: [docs/SECURITY.md](docs/SECURITY.md).
+
 ## GitHub
 
-`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 là draft [pull/4](https://github.com/Anhtran88/Luna.zl-Agent/pull/4). Phase 5 ở `phase-5-controlled-deployment`, draft, chưa merge. Remote là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Không đưa token vào source.
+`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 và 5 là draft [pull/4](https://github.com/Anhtran88/Luna.zl-Agent/pull/4) và [pull/5](https://github.com/Anhtran88/Luna.zl-Agent/pull/5). Phase 6 ở `phase-6-security-hardening`, chưa merge. Không đưa token vào source.

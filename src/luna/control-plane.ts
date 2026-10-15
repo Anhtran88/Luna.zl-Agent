@@ -26,6 +26,7 @@ import {
   type StepResult,
 } from "./domain.ts";
 import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
+import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
@@ -86,6 +87,9 @@ export class LunaControlPlane {
     }
     if (title.length < 1 || title.length > 120) {
       throw new LunaError("VALIDATION", "Tiêu đề cần từ 1 đến 120 ký tự.");
+    }
+    if (containsSecret(goal) || containsSecret(title)) {
+      throw new LunaError("VALIDATION", "Nội dung không được chứa credential.");
     }
     const mode = input.mode ?? "dry-run";
     if (mode !== "dry-run" && mode !== "live") {
@@ -175,7 +179,7 @@ export class LunaControlPlane {
     }
     approval.status = decision;
     approval.decidedAt = this.deps.clock.now();
-    approval.note = note?.trim().slice(0, 280) || undefined;
+    approval.note = note ? redactAuditDetail(note).slice(0, 280) || undefined : undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
     await this.record({
       actor: "operator",
@@ -305,6 +309,7 @@ export class LunaControlPlane {
         },
       },
       deployment: this.deps.deployment,
+      security: SECURITY_POSTURE,
     };
   }
 
@@ -326,6 +331,7 @@ export class LunaControlPlane {
       at: this.deps.clock.now(),
       dryRun: true,
       ...input,
+      detail: redactAuditDetail(input.detail),
     };
     this.audits.push(event);
     await this.deps.store.appendAudit(event);
@@ -360,7 +366,7 @@ function moduleCatalog(
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 5. Dry-run local, chưa production. Không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 6. Khóa an toàn không tắt được từ giao diện.",
     },
     {
       id: "agent",
@@ -402,6 +408,12 @@ function moduleCatalog(
       detail: deployment.blocked
         ? `${deployment.target} bị chặn. Không publish, không rules, không mạng production.`
         : `${deployment.target} dry-run. Chưa production và không gọi mạng ngoài.`,
+    },
+    {
+      id: "security",
+      name: "Security",
+      state: "locked",
+      detail: "Rules deny-all, header an toàn, rate-limit local. Live và production vẫn khóa.",
     },
   ];
 }

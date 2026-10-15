@@ -1,6 +1,7 @@
 import { PHASE4_ADAPTERS, browserContractsLocked } from "./adapters.ts";
 import { LUNAZL_FIREBASE_DATABASE_URL } from "./config.ts";
 import { LUNA_RELEASE } from "./domain.ts";
+import { preflightAudit, type SecurityAuditRecord } from "./security.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -49,6 +50,7 @@ export interface DeployDryRunReport {
   health: HealthCheck;
   rollback: RollbackPlan;
   blockers: string[];
+  audit: SecurityAuditRecord[];
 }
 
 export interface DryRunInput {
@@ -375,5 +377,6 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
     health,
     rollback: planRollback(),
     blockers,
+    audit: preflightAudit({ ok: blockers.length === 0, blockers }),
   };
 }

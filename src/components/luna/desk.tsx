@@ -78,8 +78,8 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </div>
           </div>
           <p className="text-sm leading-6 text-muted">
-            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 5 chỉ dry-run local,
-            chưa production.
+            Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 6 siết khóa an toàn.
+            Deploy vẫn là dry-run local, chưa production.
           </p>
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
@@ -95,6 +95,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Browser</dt>
               <dd className="mt-1 font-medium">mock · launch off</dd>
+            </div>
+            <div className="rounded-2xl border border-line bg-panel px-4 py-3">
+              <dt className="text-muted">Security</dt>
+              <dd className="mt-1 font-medium">
+                {snapshot.security.firebaseRules} · {snapshot.security.rateLimit}
+              </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Deploy</dt>

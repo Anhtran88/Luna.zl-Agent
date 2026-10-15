@@ -1,6 +1,13 @@
-# Vận hành Phase 5
+# Vận hành Phase 6
 
-Phase 5 thêm dry-run deployment. Không có lệnh nào trong repo publish service hay đổi dữ liệu thật.
+Phase 5 để lại dry-run deployment. Phase 6 thêm kiểm tra an ninh local. Không publish và không đổi dữ liệu thật.
+
+```bash
+npm run security:check
+npm run deploy:dry-run
+```
+
+`security:check` không in secret. Rules Firebase vẫn deny-all và không được deploy. Chi tiết đe doạ và sự cố: [SECURITY.md](SECURITY.md).
 
 ## Môi trường
 

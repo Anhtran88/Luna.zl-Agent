@@ -30,7 +30,9 @@ describe("phase 3 controlled flow", () => {
     assert.equal(result.runStatus, "completed");
     assert.ok(result.auditCount >= 2);
     const snapshot = current.snapshot();
-    assert.equal(snapshot.release, "5-controlled");
+    assert.equal(snapshot.release, "6-hardening");
+    assert.equal(snapshot.security.phaseLock, true);
+    assert.equal(snapshot.security.liveEnabled, false);
     assert.equal(snapshot.deployment.mode, "dry-run");
     assert.equal(snapshot.deployment.productionDeployed, false);
     assert.equal(snapshot.deployment.network, false);
