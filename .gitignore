@@ -1,0 +1,17 @@
+node_modules
+dist
+.output
+.nitro
+.vercel
+.env
+.env.*
+!.env.example
+*.pem
+*service-account*.json
+.DS_Store
+screenshots
+src/routeTree.gen.ts
+*.log
+.grok/
+.node_modules.lock
+
