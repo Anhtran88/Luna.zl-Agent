@@ -1,6 +1,6 @@
 # Sự cố Phase 9
 
-Production đang **NO-GO**. Runbook này không gọi mạng. Phase 10 có thể mô phỏng timeout hoặc rollback trong tiến trình, nhưng mô phỏng không phải sự cố production và không gửi alert.
+Production đang **NO-GO**. Runbook này không gọi mạng. Phase 11 ghi live bypass và rollback rehearsal vào audit local, giấu credential, và không gửi alert.
 
 1. Dừng thao tác đang định làm. Không deploy, không bật live.
 2. Ghi sự cố vào audit local. Không ghi credential.

@@ -24,7 +24,8 @@
     "readiness": "node --experimental-strip-types src/luna/readiness-cli.ts",
     "staging:check": "node --experimental-strip-types src/luna/staging-cli.ts",
     "production:check": "node --experimental-strip-types src/luna/production-cli.ts",
-    "validate:sim": "node --experimental-strip-types src/luna/validation-cli.ts"
+    "validate:sim": "node --experimental-strip-types src/luna/validation-cli.ts",
+    "governance:check": "node --experimental-strip-types src/luna/governance-cli.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

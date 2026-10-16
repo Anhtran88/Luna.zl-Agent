@@ -1,6 +1,6 @@
 # An ninh Phase 6
 
-Phase 6 siết an ninh local. Phase 7 đến 9 giữ production ở NO-GO. Phase 9 không mở mạng, không đổi rules trên console và không cấp quyền deploy. Xem [RELEASE.md](RELEASE.md).
+Phase 6 siết an ninh local. Phase 7 đến 10 giữ production ở NO-GO. Phase 11 thêm policy: cờ xác nhận không phải sign-off, vai không được trùng, và audit không chứa credential. Xem [GOVERNANCE.md](GOVERNANCE.md).
 
 ## Threat model
 

@@ -1,15 +1,15 @@
-# Vận hành Phase 10
+# Vận hành Phase 11
 
-Phase 10 mô phỏng validation sau deployment. Production vẫn NO-GO. Không publish và không bật live.
+Phase 11 kiểm tra policy local. Production vẫn NO-GO. Không publish và không bật live.
 
 ```bash
+npm run governance:check
 npm run validate:sim
 npm run production:check
-npm run readiness
 npm run security:check
 ```
 
-Báo cáo mô phỏng: [VALIDATION.md](VALIDATION.md). Hồ sơ production: [RELEASE.md](RELEASE.md).
+Policy: [GOVERNANCE.md](GOVERNANCE.md). An ninh: [SECURITY.md](SECURITY.md).
 
 ## Môi trường
 

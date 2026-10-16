@@ -2,7 +2,7 @@
 
 Quyết định: **NO-GO**. Quyền deploy: **not-granted**.
 
-Phase 10 không đổi quyết định này. Validation mô phỏng không phải bằng chứng đã deploy. Xem [VALIDATION.md](VALIDATION.md).
+Phase 10 không đổi quyết định này. Phase 11 cũng không. Cờ xác nhận giả không đóng checklist. Xem [GOVERNANCE.md](GOVERNANCE.md) và [VALIDATION.md](VALIDATION.md).
 
 Phase 9 chỉ lập hồ sơ. Đủ sign-off trên giấy cũng không làm lệnh này deploy. Health production và alerting ngoài cố ý để mở vì không được gọi mạng.
 

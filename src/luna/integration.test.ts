@@ -30,7 +30,15 @@ describe("phase 3 controlled flow", () => {
     assert.equal(result.runStatus, "completed");
     assert.ok(result.auditCount >= 2);
     const snapshot = current.snapshot();
-    assert.equal(snapshot.release, "10-validation");
+    assert.equal(snapshot.release, "11-governance");
+    assert.equal(snapshot.governance.decision, "NO-GO");
+    assert.equal(snapshot.governance.authorization, "not-granted");
+    assert.equal(snapshot.governance.fakeSignOffAccepted, false);
+    assert.equal(snapshot.governance.networkCalls, 0);
+    const moduleIds = snapshot.modules.map((module) => module.id);
+    assert.equal(new Set(moduleIds).size, moduleIds.length);
+    assert.ok(moduleIds.includes("policy"));
+    assert.ok(moduleIds.includes("governance"));
     assert.equal(snapshot.validation.scope, "simulated");
     assert.equal(snapshot.validation.productionValidated, false);
     assert.equal(snapshot.validation.productionDeployed, false);
