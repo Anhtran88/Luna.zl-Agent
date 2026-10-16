@@ -32,6 +32,7 @@ import { assessProduction, summarizeProduction, type ProductionSummary } from ".
 import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
 import { evaluateGovernance, summarizeGovernance, type GovernanceSummary } from "./policy.ts";
 import { assessOperations, summarizeOperations, type OperationsSummary } from "./operations.ts";
+import { OWNER_ROLE_NAMES, ownerDecisionOwners } from "./owner-decisions.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -92,8 +93,10 @@ export class LunaControlPlane {
       staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
       production: partial?.production ?? summarizeProduction(assessProduction({ env })),
       validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
-      governance: partial?.governance ?? summarizeGovernance(evaluateGovernance({ env })),
-      operations: partial?.operations ?? summarizeOperations(assessOperations({ env })),
+      governance: partial?.governance ?? summarizeGovernance(evaluateGovernance({ env, owners: ownerDecisionOwners() })),
+      operations:
+        partial?.operations ??
+        summarizeOperations(assessOperations({ env, owners: ownerDecisionOwners(), roleNames: OWNER_ROLE_NAMES })),
     });
   }
 

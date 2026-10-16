@@ -221,11 +221,19 @@ export function assessReadiness(input: { env?: Env } = {}): ReadinessReport {
 export function riskRegister(): Risk[] {
   return [
     {
+      id: "owner-collision",
+      severity: "critical",
+      owner: "chủ repo",
+      status: "open",
+      mitigation: "Mọi vai đang là cùng một handle. Không tính separation-of-duties. Không suy diễn handle khác.",
+      closeWhen: "Bảy vai có handle khác nhau. Cùng một người không đủ.",
+    },
+    {
       id: "no-staging",
       severity: "critical",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Không deploy. Staging có mạng cần xác nhận riêng.",
+      mitigation: "Chủ repo ghi chưa có môi trường staging. Không suy đoán URL và không deploy.",
       closeWhen: "Có môi trường staging được chủ repo chấp nhận. Cờ env không đủ để đóng.",
     },
     {
@@ -233,16 +241,16 @@ export function riskRegister(): Risk[] {
       severity: "critical",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Không tạo hay commit credential.",
-      closeWhen: "Có người chịu trách nhiệm credential ngoài repository.",
+      mitigation: "Handle credential trùng requester. Không tạo hay commit credential.",
+      closeWhen: "Có handle credential khác requester, ngoài repository.",
     },
     {
       id: "no-budget",
       severity: "high",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Giữ mock và chi phí $0.",
-      closeWhen: "Ngân sách Firebase, 9Router và browser được chốt.",
+      mitigation: "Giữ mock và chi phí $0. Ưu tiên tiết kiệm không phải hạn mức.",
+      closeWhen: "Có cap tháng cho Firebase, 9Router và Browser. Không diễn giải thành số khi chưa được điền.",
     },
     {
       id: "no-security-approval",
@@ -257,8 +265,8 @@ export function riskRegister(): Risk[] {
       severity: "high",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Không đăng nhập hay thao tác Zalo, eOffice hoặc browser thật.",
-      closeWhen: "Có chính sách browser và quyết định Zalo/eOffice.",
+      mitigation: "Chủ repo cấm browser automation thật và cấm thao tác Zalo/eOffice. Cùng một handle nên chưa phải phê duyệt tách biệt. Giữ stub và launch off.",
+      closeWhen: "Có phê duyệt tách biệt. Quyết định cấm không tự mở live.",
     },
     {
       id: "memory-only-data",

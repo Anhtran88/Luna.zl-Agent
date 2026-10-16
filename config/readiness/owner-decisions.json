@@ -1,0 +1,44 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "separationOfDuties": "BLOCKED",
+  "ownerCollision": true,
+  "note": "Chủ repo ghi cùng một handle cho mọi vai. Đây là collision, không phải bảy vai độc lập. Không có secret, token, cookie, private key, credential hay URL.",
+  "roles": [
+    { "id": "requester", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "approver", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "staging-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "credential-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "security-reviewer", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "rollback-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "incident-owner", "assignee": "kenbi", "status": "BLOCKED" }
+  ],
+  "license": {
+    "spdx": "MIT",
+    "copyrightHolder": "Anhtran88",
+    "legalName": null,
+    "note": "GitHub login của chủ repo. Profile không có tên pháp lý. Thay nếu muốn tên khác."
+  },
+  "budget": {
+    "status": "unapproved",
+    "preference": "cost-saving",
+    "note": "Ưu tiên tiết kiệm không phải hạn mức tiền.",
+    "caps": [
+      { "service": "firebase", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
+      { "service": "nineRouter", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
+      { "service": "browser", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" }
+    ]
+  },
+  "staging": {
+    "status": "absent",
+    "environment": null
+  },
+  "browserPolicy": {
+    "realAutomation": "forbidden",
+    "launch": false,
+    "adapters": ["mock", "playwright-stub", "skyvern-stub", "browser-use-stub"]
+  },
+  "zaloEofficePolicy": {
+    "actions": "forbidden"
+  }
+}

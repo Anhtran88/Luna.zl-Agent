@@ -3,6 +3,14 @@
   "authorization": "not-granted",
   "metadata": ["evidence_id", "source_type", "created_at", "expires_at", "sha256", "scope", "approval_reference"],
   "forbidden": ["secret", "token", "cookie", "private_key", "credential", "url", "confirmation_flag"],
+  "ownerDecisions": {
+    "roles": "collision",
+    "budget": "unapproved",
+    "staging": "absent",
+    "browserAutomation": "forbidden",
+    "zaloEoffice": "forbidden",
+    "license": "MIT"
+  },
   "records": [
     { "field": "staging-environment", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "staging", "approval_reference": null, "status": "BLOCKED" },
     { "field": "budget", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "budget", "approval_reference": null, "status": "BLOCKED" },

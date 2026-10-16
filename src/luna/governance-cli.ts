@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { ownerDecisionOwners } from "./owner-decisions.ts";
 import { evaluateGovernance } from "./policy.ts";
 import { rulesDenyByDefault } from "./security.ts";
 
@@ -10,6 +11,7 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
 const report = evaluateGovernance({
   env: process.env,
   action: "production",
+  owners: ownerDecisionOwners(),
   rulesDeny: rulesDenyByDefault(rules),
   sbom: {
     directDependencies: Object.keys(pkg.dependencies ?? {}).length,
@@ -24,6 +26,8 @@ process.stdout.write(
       authorization: report.authorization,
       policy: report.policy,
       fakeSignOffAccepted: report.fakeSignOffAccepted,
+      ownerCollision: report.checks.find((item) => item.id === "owner-collision")?.ok === false,
+      separationOfDuties: "BLOCKED",
       networkCalls: report.networkCalls,
       productionDeployed: report.productionDeployed,
       estimatedUsd: report.estimatedUsd,

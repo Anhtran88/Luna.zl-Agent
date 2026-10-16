@@ -138,6 +138,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
               <dd className="mt-1 font-medium">
                 {snapshot.operations.decision} · evidence {snapshot.operations.evidenceScore}/100 ·{" "}
                 {snapshot.operations.rolesBlocked} vai BLOCKED
+                {snapshot.operations.ownerCollision ? " · trùng handle" : ""}
               </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">

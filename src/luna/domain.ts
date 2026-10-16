@@ -227,6 +227,7 @@ export interface ControlPlaneSnapshot {
     networkCalls: 0;
     blockers: number;
     rolesBlocked: number;
+    ownerCollision: boolean;
   };
 }
 

@@ -10,19 +10,33 @@ npm run production:check
 npm run security:check
 ```
 
-`ops:check` không gọi mạng. Báo cáo có evidence score, blocker id, compliance và sáu diễn tập. Không in handle hay credential.
+`ops:check` không gọi mạng. Báo cáo có evidence score, blocker id, compliance, assignee chủ repo đã cung cấp, và sáu diễn tập. Không in secret, token, cookie, private key, credential hay URL.
 
 ## Checklist
 
-Bảy vai đang **BLOCKED** và không được gán handle: requester, approver, staging owner, credential owner, security reviewer, rollback owner, incident owner. Thiếu vai nào thì vai đó giữ BLOCKED. Trùng handle thì cả bảng giữ BLOCKED.
+Bảy vai đã được chủ repo gán cho **kenbi**, nhưng đó là **owner collision**. Separation-of-duties giữ **BLOCKED**. Không suy diễn thành bảy handle khác nhau. Approver, security reviewer và credential owner trùng requester nên governance, staging và production vẫn NO-GO.
 
-Bằng chứng chỉ lưu `evidence_id`, `source_type`, `created_at`, `expires_at`, `sha256`, `scope`, `approval_reference`. Thiếu bản ghi, hết hạn, sai SHA, sai scope, cờ giả, secret hoặc URL thì BLOCKED. Ngân sách, backup, health và alerting đang thiếu. License package chưa khai báo. Health và alerting không được probe trong phase này.
+Ngân sách: **chưa phê duyệt**, chưa có cap. “Ưu tiên tiết kiệm” không phải số tiền.
+
+| Dịch vụ | Cap tối đa / tháng | Tiền tệ | Trạng thái |
+| --- | --- | --- | --- |
+| Firebase | chưa điền | chưa điền | chưa phê duyệt |
+| 9Router | chưa điền | chưa điền | chưa phê duyệt |
+| Browser | chưa điền | chưa điền | chưa phê duyệt |
+
+Staging: **chưa có môi trường**. Không suy đoán URL.
+
+Browser automation thật: **cấm**. Playwright, Skyvern và Browser Use giữ stub, launch off. Zalo/eOffice: **không được thao tác**.
+
+License package: **MIT**. Copyright trong `LICENSE` dùng GitHub login `Anhtran88` vì profile không có tên pháp lý. Chủ repo thay nếu muốn tên khác. License không chuyển GO.
+
+Quyết định ghi ở [config/readiness/owner-decisions.json](../config/readiness/owner-decisions.json). Evidence vẫn BLOCKED khi thiếu digest, hạn hoặc approval reference.
 
 Mẫu trống, không có dữ liệu thật, nằm ở [config/readiness](../config/readiness):
 
 | Mẫu | Chủ repo điền ngoài repo |
 | --- | --- |
-| `role-assignment.template.json` | Bảy handle khác nhau. Không ghi handle vào git. |
+| `role-assignment.template.json` | Mọi vai là kenbi và BLOCKED vì collision. Không điền handle khác hộ chủ repo. |
 | `staging-confirmation.template.json` | Mã staging, scope `staging`, SHA-256, hạn, approval reference. Không ghi URL. |
 | `budget-approval.template.json` | Mã ngân sách, scope `budget`. Không ghi số tài khoản. |
 | `security-legal-approval.template.json` | Mã phê duyệt an ninh và pháp lý. |

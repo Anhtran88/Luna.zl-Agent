@@ -239,14 +239,21 @@ describe("phase 12 operations", () => {
     ];
     for (const file of files) {
       const text = readFileSync(file, "utf8");
-      const parsed = JSON.parse(text) as { decision: string; roles?: Array<{ assignee: null; status: string }> };
+      const parsed = JSON.parse(text) as {
+        decision: string;
+        ownerCollision?: boolean;
+        roles?: Array<{ assignee: string | null; status: string }>;
+      };
       assert.equal(parsed.decision, "NO-GO", file);
       assert.equal(text.includes("https://"), false, file);
       assert.equal(text.includes(SECRET), false, file);
       assert.equal(text.includes("BLOCKED"), true, file);
       for (const role of parsed.roles ?? []) {
-        assert.equal(role.assignee, null);
+        assert.equal(role.assignee, file.endsWith("role-assignment.template.json") ? "kenbi" : null);
         assert.equal(role.status, "BLOCKED");
+      }
+      if (file.endsWith("role-assignment.template.json")) {
+        assert.equal(parsed.ownerCollision, true);
       }
     }
   });

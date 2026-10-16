@@ -1,6 +1,6 @@
 # An ninh Phase 6
 
-Phase 6 siết an ninh local. Phase 7 đến 10 giữ production ở NO-GO. Phase 11 thêm policy: cờ xác nhận không phải sign-off, vai không được trùng, và audit không chứa credential. Phase 12 thêm sổ bằng chứng có digest, scope và approval reference. Mẫu ở `config/readiness/` không chứa secret. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
+Phase 12 ghi owner collision: cùng handle `kenbi` không phải separation-of-duties. Browser automation thật và Zalo/eOffice bị cấm. License MIT nằm ở `LICENSE`; copyright là GitHub login `Anhtran88` vì profile không có tên pháp lý. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
 
 ## Threat model
 

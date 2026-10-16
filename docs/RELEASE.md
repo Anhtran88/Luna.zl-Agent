@@ -2,7 +2,7 @@
 
 Quyết định: **NO-GO**. Quyền deploy: **not-granted**.
 
-Phase 10 không đổi quyết định này. Phase 11 cũng không. Phase 12 ghi checklist vận hành và vẫn **NO-GO**. Cờ xác nhận giả không đóng checklist. Mẫu evidence trống không phải sign-off. Xem [GOVERNANCE.md](GOVERNANCE.md), [OPERATIONS.md](OPERATIONS.md) và [VALIDATION.md](VALIDATION.md).
+Phase 12 ghi quyết định chủ repo và vẫn **NO-GO**. License MIT không đóng production gate. Owner collision, staging vắng và ngân sách chưa có cap vẫn mở.
 
 Phase 9 chỉ lập hồ sơ. Đủ sign-off trên giấy cũng không làm lệnh này deploy. Health production và alerting ngoài cố ý để mở vì không được gọi mạng.
 

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { OWNER_ROLE_NAMES, ownerDecisionOwners } from "./owner-decisions.ts";
 import { assessOperations } from "./operations.ts";
 import { rulesDenyByDefault } from "./security.ts";
 
@@ -9,6 +10,8 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
 };
 const report = assessOperations({
   env: process.env,
+  owners: ownerDecisionOwners(),
+  roleNames: OWNER_ROLE_NAMES,
   rulesDeny: rulesDenyByDefault(rules),
   sbom: {
     directDependencies: Object.keys(pkg.dependencies ?? {}).length,
@@ -31,6 +34,8 @@ process.stdout.write(
       estimatedUsd: report.estimatedUsd,
       blockerCount: report.blockers.length,
       rolesBlocked: report.roles.filter((role) => role.status === "BLOCKED").length,
+      ownerCollision: report.roles.length > 0 && report.checklist.find((item) => item.id === "owner-collision")?.ok === false,
+      separationOfDuties: "BLOCKED",
       roles: report.roles.map((role) => ({ id: role.id, status: role.status, assignee: role.assignee })),
       blockers: report.blockers.map((item) => ({ id: item.id, severity: item.severity })),
       evidence: report.registry.map((item) => ({

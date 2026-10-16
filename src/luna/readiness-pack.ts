@@ -30,7 +30,7 @@ export type RoleSlotStatus = "BLOCKED" | "RECORDED";
 export interface RoleSlot {
   id: (typeof ROLE_PACK)[number]["id"];
   sodRole: (typeof ROLE_PACK)[number]["sod"];
-  assignee: null;
+  assignee: string | null;
   status: RoleSlotStatus;
 }
 
@@ -49,11 +49,15 @@ export interface BlankEvidenceRecord {
 const OWNER_NOTE =
   "Mẫu trống. Điền ngoài repository. Không commit bản đã điền. Không ghi secret, token, cookie, private key, credential hay URL. Cờ xác nhận không phải sign-off. Decision giữ NO-GO.";
 
-export function roleBoard(roleOk: (sodRole: string) => boolean, collisionOk: boolean): RoleSlot[] {
+export function roleBoard(
+  roleOk: (sodRole: string) => boolean,
+  collisionOk: boolean,
+  names?: Partial<Record<(typeof ROLE_PACK)[number]["id"], string>>,
+): RoleSlot[] {
   return ROLE_PACK.map((role) => ({
     id: role.id,
     sodRole: role.sod,
-    assignee: null,
+    assignee: names?.[role.id] ?? null,
     status: collisionOk && roleOk(role.sod) ? "RECORDED" : "BLOCKED",
   }));
 }

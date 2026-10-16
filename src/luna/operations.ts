@@ -164,6 +164,7 @@ export interface OperationsSummary {
   networkCalls: 0;
   blockers: number;
   rolesBlocked: number;
+  ownerCollision: boolean;
 }
 
 export interface EvidenceInput {
@@ -197,6 +198,7 @@ export interface OperationsInput {
   sbom?: { directDependencies: number; lockfilePresent: boolean; license?: string };
   redactionSample?: string;
   fetchImpl?: () => Promise<unknown>;
+  roleNames?: Partial<Record<RoleSlot["id"], string>>;
 }
 
 export function evidenceDigest(field: string, sourceType: string, body: string): string {
@@ -321,7 +323,11 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
   ];
 
   const collisionOk = checklist.find((row) => row.id === "owner-collision")?.ok === true;
-  const roles = roleBoard((sod) => checklist.find((row) => row.id === `role:${sod}`)?.ok === true, collisionOk);
+  const roles = roleBoard(
+    (sod) => checklist.find((row) => row.id === `role:${sod}`)?.ok === true,
+    collisionOk,
+    input.roleNames,
+  );
   const risks = [standingRisk(), ...(input.risks ?? []).map((risk, index) => decideRisk(risk, index, now))];
   const drills = runDrills(registry, input.redactionSample);
   const blockers = [
@@ -369,6 +375,7 @@ export function summarizeOperations(report: OperationsReport): OperationsSummary
     networkCalls: 0,
     blockers: report.blockers.length,
     rolesBlocked: report.roles.filter((role) => role.status === "BLOCKED").length,
+    ownerCollision: report.checklist.find((row) => row.id === "owner-collision")?.ok === false,
   };
 }
 

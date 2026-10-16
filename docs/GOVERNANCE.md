@@ -12,7 +12,7 @@ Lệnh không gọi mạng. Báo cáo chỉ có id của blocker, không có han
 
 ## RACI
 
-Mọi vai đang **unassigned**. Không điền tên thật.
+Chủ repo đã ghi `kenbi` cho mọi vai. Đó là collision, không phải người tách biệt. Ma trận dưới đây không có bảy người độc lập.
 
 | Việc | Requester | Approver | Environment | Credential | Security | Rollback | Incident |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -41,8 +41,8 @@ A = thực hiện, C = phải đồng ý, I = được báo. Ô trống nghĩa l
 
 Thiếu bất kỳ mục trên, hoặc có cờ xác nhận giả, thì staging và production là NO-GO. Kể cả khi đủ mục, phase này vẫn không gọi mạng.
 
-## Phase 12
+## Quyết định chủ repo
 
-Operational readiness không đổi RACI và không chấp nhận cờ. Sổ bằng chứng chỉ lưu `evidence_id`, `source_type`, `created_at`, `expires_at`, `sha256`, `scope` và `approval_reference`. Secret, URL và `*_CONFIRMED=true` bị từ chối. Sai SHA, sai scope, hết hạn hoặc thiếu field thì BLOCKED. Đủ metadata local vẫn là NO-GO.
+Chủ repo gán requester, approver, staging owner, credential owner, security reviewer, rollback owner và incident owner cho cùng handle `kenbi`. Gate ghi collision và giữ separation-of-duties **BLOCKED**. Không nhận đó là bảy vai độc lập và không đổi cờ `*_CONFIRMED` thành true.
 
-Mẫu trống cho chủ repo nằm ở `config/readiness/`. Không điền tên hay credential vào git. Xem [OPERATIONS.md](OPERATIONS.md).
+Browser automation thật và thao tác Zalo/eOffice bị cấm. Staging chưa có môi trường. Ngân sách chưa có cap. License MIT không cấp quyền deploy.
