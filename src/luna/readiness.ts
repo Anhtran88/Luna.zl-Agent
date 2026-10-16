@@ -233,8 +233,8 @@ export function riskRegister(): Risk[] {
       severity: "critical",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Chủ repo ghi chưa có môi trường staging. Không suy đoán URL và không deploy.",
-      closeWhen: "Có môi trường staging được chủ repo chấp nhận. Cờ env không đủ để đóng.",
+      mitigation: "Chủ repo báo staging đã có nhưng chưa xác minh. Không probe, không lưu URL. Staging owner vẫn trùng requester.",
+      closeWhen: "Có evidence an toàn và staging owner khác requester. Báo cáo chưa verified không đủ.",
     },
     {
       id: "no-credential-owner",
@@ -249,8 +249,8 @@ export function riskRegister(): Risk[] {
       severity: "high",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Giữ mock và chi phí $0. Ưu tiên tiết kiệm không phải hạn mức.",
-      closeWhen: "Có cap tháng cho Firebase, 9Router và Browser. Không diễn giải thành số khi chưa được điền.",
+      mitigation: "Cap tháng đã ghi: Firebase 0 USD, 9Router 1 USD, Browser 1 USD. Lần này chi 0. Vượt cap thì từ chối. Không bật live.",
+      closeWhen: "Có bằng chứng ngân sách còn hạn. Cap một mình không đóng rủi ro và không phải cờ xác nhận.",
     },
     {
       id: "no-security-approval",
@@ -265,8 +265,8 @@ export function riskRegister(): Risk[] {
       severity: "high",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Chủ repo cấm browser automation thật và cấm thao tác Zalo/eOffice. Cùng một handle nên chưa phải phê duyệt tách biệt. Giữ stub và launch off.",
-      closeWhen: "Có phê duyệt tách biệt. Quyết định cấm không tự mở live.",
+      mitigation: "Browser chỉ được xét ở staging và launch vẫn tắt. Production browser bị cấm. Zalo/eOffice đang scope-pending, thao tác thật khóa. Owner collision chưa giải.",
+      closeWhen: "Staging đã verified, evidence browser hợp lệ, hết collision, approval gate đạt, và Zalo/eOffice có scope cụ thể được chủ repo phê duyệt.",
     },
     {
       id: "memory-only-data",

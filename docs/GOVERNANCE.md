@@ -45,4 +45,12 @@ Thiếu bất kỳ mục trên, hoặc có cờ xác nhận giả, thì staging 
 
 Chủ repo gán requester, approver, staging owner, credential owner, security reviewer, rollback owner và incident owner cho cùng handle `kenbi`. Gate ghi collision và giữ separation-of-duties **BLOCKED**. Không nhận đó là bảy vai độc lập và không đổi cờ `*_CONFIRMED` thành true.
 
-Browser automation thật và thao tác Zalo/eOffice bị cấm. Staging chưa có môi trường. Ngân sách chưa có cap. License MIT không cấp quyền deploy.
+Cap tháng: Firebase 0 USD, 9Router 1 USD, Browser 1 USD. Vượt cap thì từ chối, không gọi dịch vụ và không phát sinh phí. Cap không phải sign-off.
+
+Staging: chủ repo báo đã có (`owner-reported-present`) nhưng `verified` là false. Không probe và không lưu URL. Staging owner vẫn trùng requester.
+
+Browser automation chỉ được xét trong staging, cap 1 USD/tháng. Launch vẫn tắt cho tới khi staging được xác minh, evidence browser hợp lệ, hết owner collision và approval gate đạt. Production browser bị cấm.
+
+Zalo/eOffice: `authorization=scope-pending`. Mọi thao tác thật vẫn khóa. Không suy diễn scope.
+
+License MIT không cấp quyền deploy. Copyright giữ `Anhtran88`.

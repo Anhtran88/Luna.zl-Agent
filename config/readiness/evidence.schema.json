@@ -5,10 +5,13 @@
   "forbidden": ["secret", "token", "cookie", "private_key", "credential", "url", "confirmation_flag"],
   "ownerDecisions": {
     "roles": "collision",
-    "budget": "unapproved",
-    "staging": "absent",
-    "browserAutomation": "forbidden",
-    "zaloEoffice": "forbidden",
+    "budget": "caps-recorded",
+    "budgetCapsUsd": { "firebase": 0, "nineRouter": 1, "browser": 1 },
+    "staging": "owner-reported-present",
+    "stagingVerified": false,
+    "browserAutomation": "staging-only",
+    "browserLaunch": false,
+    "zaloEoffice": "scope-pending",
     "license": "MIT"
   },
   "records": [

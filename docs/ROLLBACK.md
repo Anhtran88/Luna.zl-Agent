@@ -2,7 +2,7 @@
 
 Chiến lược: **local-no-op**. Production đang **NO-GO**.
 
-Rollback owner được ghi là kenbi nhưng trùng requester, nên vai này vẫn BLOCKED. Backup, health và alerting vẫn BLOCKED. Không có cap ngân sách và không có môi trường staging.
+Rollback owner được ghi là kenbi nhưng trùng requester, nên vai này vẫn BLOCKED. Backup, health và alerting vẫn BLOCKED. Cap tháng đã ghi nhưng không phát sinh phí. Staging được báo đã có và chưa verified.
 
 1. Nếu preflight thất bại, không đổi process đang chạy.
 2. Không gọi hosting, không deploy Firebase rules, không publish.

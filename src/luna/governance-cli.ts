@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { ownerDecisionOwners } from "./owner-decisions.ts";
+import { ownerDecisionOwners, summarizeOwnerPolicy } from "./owner-decisions.ts";
 import { evaluateGovernance } from "./policy.ts";
 import { rulesDenyByDefault } from "./security.ts";
 
@@ -8,6 +8,7 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
   license?: string;
   dependencies?: Record<string, string>;
 };
+const ownerPolicy = summarizeOwnerPolicy();
 const report = evaluateGovernance({
   env: process.env,
   action: "production",
@@ -34,6 +35,7 @@ process.stdout.write(
       blockers: report.blockers.map((item) => ({ id: item.id, severity: item.severity })),
       findings: report.findings.map((item) => ({ id: item.id, ok: item.ok, severity: item.severity })),
       audit: report.audit.map((item) => ({ action: item.action, outcome: item.outcome, dryRun: item.dryRun })),
+      ownerPolicy,
     },
     null,
     2,
@@ -43,5 +45,9 @@ const safe =
   report.decision === "NO-GO" &&
   report.fakeSignOffAccepted === false &&
   report.networkCalls === 0 &&
-  report.productionDeployed === false;
+  report.productionDeployed === false &&
+  ownerPolicy.browser.launch === false &&
+  ownerPolicy.zaloEoffice.executed === false &&
+  ownerPolicy.budget.chargedUsd === 0 &&
+  ownerPolicy.staging.probed === false;
 process.exit(safe ? 0 : 1);

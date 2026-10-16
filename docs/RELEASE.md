@@ -2,7 +2,7 @@
 
 Quyết định: **NO-GO**. Quyền deploy: **not-granted**.
 
-Phase 12 ghi quyết định chủ repo và vẫn **NO-GO**. License MIT không đóng production gate. Owner collision, staging vắng và ngân sách chưa có cap vẫn mở.
+Phase 12 ghi quyết định chủ repo và vẫn **NO-GO**. License MIT không đóng production gate. Owner collision còn mở. Staging mới được báo là có và chưa verified. Cap tháng không phải quyền deploy.
 
 Phase 9 chỉ lập hồ sơ. Đủ sign-off trên giấy cũng không làm lệnh này deploy. Health production và alerting ngoài cố ý để mở vì không được gọi mạng.
 

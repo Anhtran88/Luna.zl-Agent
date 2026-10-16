@@ -13,6 +13,16 @@ export const OWNER_ROLE_NAMES = {
   "incident-owner": OWNER_HANDLE,
 } as const;
 
+export const BUDGET_SERVICES = ["firebase", "nineRouter", "browser"] as const;
+export type BudgetService = (typeof BUDGET_SERVICES)[number];
+
+/** Monthly maximums in USD. Firebase 0 rejects any positive charge. These are caps, not spend. */
+export const BUDGET_CAPS_USD = {
+  firebase: 0,
+  nineRouter: 1,
+  browser: 1,
+} as const;
+
 export const OWNER_DECISIONS = {
   decision: "NO-GO",
   authorization: "not-granted",
@@ -20,13 +30,49 @@ export const OWNER_DECISIONS = {
   ownerCollision: true,
   license: "MIT",
   copyrightHolder: "Anhtran88",
-  budgetStatus: "unapproved",
-  budgetPreference: "cost-saving",
-  budgetCaps: { firebase: null, nineRouter: null, browser: null },
-  stagingStatus: "absent",
-  browserAutomation: "forbidden",
-  zaloEoffice: "forbidden",
+  budgetStatus: "caps-recorded",
+  budgetCurrency: "USD",
+  budgetCaps: BUDGET_CAPS_USD,
+  chargedUsd: 0,
+  stagingStatus: "owner-reported-present",
+  stagingVerified: false,
+  browserAutomation: "staging-only",
+  browserProduction: "forbidden",
+  browserLaunch: false,
+  zaloEoffice: "scope-pending",
 } as const;
+
+export interface SpendDecision {
+  service: BudgetService | "rejected";
+  decision: "within-cap" | "rejected";
+  ok: boolean;
+  capUsd: number | null;
+  proposedUsd: number | null;
+  chargedUsd: 0;
+  networkCalls: 0;
+  liveEnabled: false;
+  reason: "within-cap" | "over-cap" | "invalid-amount" | "unknown-service" | "non-usd";
+}
+
+export interface BrowserLaunchDecision {
+  policy: "staging-only";
+  production: "forbidden";
+  target: "local" | "staging" | "production";
+  policyAllows: boolean;
+  launch: false;
+  executed: false;
+  networkCalls: 0;
+  unmet: string[];
+}
+
+export interface ZaloDecision {
+  authorization: "scope-pending";
+  scope: null;
+  executed: false;
+  locked: true;
+  networkCalls: 0;
+  reason: "scope-pending";
+}
 
 export function ownerDecisionOwners(): Record<SodRole, string> {
   return {
@@ -37,5 +83,116 @@ export function ownerDecisionOwners(): Record<SodRole, string> {
     "security-reviewer": OWNER_HANDLE,
     "rollback-owner": OWNER_HANDLE,
     "incident-owner": OWNER_HANDLE,
+  };
+}
+
+function isBudgetService(service: string): service is BudgetService {
+  return (BUDGET_SERVICES as readonly string[]).includes(service);
+}
+
+/** Fail closed. A proposal above the monthly cap is rejected and nothing is charged or called. */
+export function evaluateMonthlySpend(service: string, proposedUsd: number, currency = "USD"): SpendDecision {
+  const fixed = { chargedUsd: 0 as const, networkCalls: 0 as const, liveEnabled: false as const };
+  const finite = typeof proposedUsd === "number" && Number.isFinite(proposedUsd) ? proposedUsd : null;
+  if (currency !== "USD") {
+    return { ...fixed, service: "rejected", decision: "rejected", ok: false, capUsd: null, proposedUsd: finite, reason: "non-usd" };
+  }
+  if (!isBudgetService(service)) {
+    return { ...fixed, service: "rejected", decision: "rejected", ok: false, capUsd: null, proposedUsd: finite, reason: "unknown-service" };
+  }
+  const capUsd = BUDGET_CAPS_USD[service];
+  if (finite === null || finite < 0) {
+    return { ...fixed, service, decision: "rejected", ok: false, capUsd, proposedUsd: null, reason: "invalid-amount" };
+  }
+  if (finite > capUsd) {
+    return { ...fixed, service, decision: "rejected", ok: false, capUsd, proposedUsd: finite, reason: "over-cap" };
+  }
+  return { ...fixed, service, decision: "within-cap", ok: true, capUsd, proposedUsd: finite, reason: "within-cap" };
+}
+
+export function evaluateBrowserLaunch(input: {
+  target?: "local" | "staging" | "production";
+  stagingVerified?: boolean;
+  evidenceValid?: boolean;
+  ownerCollision?: boolean;
+  approvalGatesPassed?: boolean;
+} = {}): BrowserLaunchDecision {
+  const target = input.target ?? "local";
+  const unmet: string[] = [];
+  if (target !== "staging") unmet.push("staging-only");
+  if (target === "production") unmet.push("production-forbidden");
+  if (input.stagingVerified !== true) unmet.push("staging-unverified");
+  if (input.evidenceValid !== true) unmet.push("browser-evidence-missing");
+  if (input.ownerCollision !== false) unmet.push("owner-collision");
+  if (input.approvalGatesPassed !== true) unmet.push("approval-gates");
+  const policyAllows = target === "staging" && unmet.length === 0;
+  return {
+    policy: "staging-only",
+    production: "forbidden",
+    target,
+    policyAllows,
+    launch: false,
+    executed: false,
+    networkCalls: 0,
+    unmet: policyAllows ? [] : unmet,
+  };
+}
+
+/** Scope was not supplied. Any caller-provided scope or action is ignored and not echoed. */
+export function evaluateZaloEoffice(_input: { scope?: string | null; action?: string | null } = {}): ZaloDecision {
+  return {
+    authorization: "scope-pending",
+    scope: null,
+    executed: false,
+    locked: true,
+    networkCalls: 0,
+    reason: "scope-pending",
+  };
+}
+
+export function summarizeOwnerPolicy() {
+  const proposedUsd = { firebase: 0, nineRouter: 0, browser: 0 } as const;
+  const spend = BUDGET_SERVICES.map((service) => evaluateMonthlySpend(service, proposedUsd[service]));
+  const browser = evaluateBrowserLaunch({
+    target: "staging",
+    stagingVerified: false,
+    evidenceValid: false,
+    ownerCollision: true,
+    approvalGatesPassed: false,
+  });
+  return {
+    decision: OWNER_DECISIONS.decision,
+    authorization: OWNER_DECISIONS.authorization,
+    separationOfDuties: OWNER_DECISIONS.separationOfDuties,
+    ownerCollision: OWNER_DECISIONS.ownerCollision,
+    budget: {
+      status: OWNER_DECISIONS.budgetStatus,
+      currency: OWNER_DECISIONS.budgetCurrency,
+      capsUsd: BUDGET_CAPS_USD,
+      proposedUsd,
+      withinCap: spend.every((row) => row.ok),
+      chargedUsd: 0 as const,
+      overCap: "rejected" as const,
+      liveEnabled: false as const,
+    },
+    staging: {
+      status: OWNER_DECISIONS.stagingStatus,
+      verified: false as const,
+      environment: null,
+      independentStagingOwner: false as const,
+      probed: false as const,
+      networkCalls: 0 as const,
+    },
+    browser: {
+      policy: browser.policy,
+      production: browser.production,
+      policyAllows: browser.policyAllows,
+      launch: false as const,
+      executed: false as const,
+      networkCalls: 0 as const,
+      monthlyCapUsd: BUDGET_CAPS_USD.browser,
+    },
+    zaloEoffice: evaluateZaloEoffice(),
+    copyrightHolder: OWNER_DECISIONS.copyrightHolder,
   };
 }

@@ -1,6 +1,6 @@
 # An ninh Phase 6
 
-Phase 12 ghi owner collision: cùng handle `kenbi` không phải separation-of-duties. Browser automation thật và Zalo/eOffice bị cấm. License MIT nằm ở `LICENSE`; copyright là GitHub login `Anhtran88` vì profile không có tên pháp lý. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
+Phase 12 ghi owner collision: cùng handle `kenbi` không phải separation-of-duties. Cap tháng là Firebase 0 USD, 9Router 1 USD, Browser 1 USD; vượt cap thì từ chối và không gọi dịch vụ. Browser chỉ được xét ở staging và launch vẫn tắt; production browser bị cấm. Zalo/eOffice đang scope-pending, thao tác thật khóa. License MIT nằm ở `LICENSE`; copyright giữ GitHub login `Anhtran88`. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
 
 ## Threat model
 

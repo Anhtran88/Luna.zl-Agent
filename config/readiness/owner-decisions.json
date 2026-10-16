@@ -17,28 +17,40 @@
     "spdx": "MIT",
     "copyrightHolder": "Anhtran88",
     "legalName": null,
-    "note": "GitHub login của chủ repo. Profile không có tên pháp lý. Thay nếu muốn tên khác."
+    "note": "GitHub login của chủ repo. Profile không có tên pháp lý. Giữ Anhtran88 cho tới khi chủ repo thay."
   },
   "budget": {
-    "status": "unapproved",
-    "preference": "cost-saving",
-    "note": "Ưu tiên tiết kiệm không phải hạn mức tiền.",
+    "status": "caps-recorded",
+    "currency": "USD",
+    "chargedUsd": 0,
+    "note": "Cap là mức tối đa mỗi tháng, không phải quyền chi và không phải cờ xác nhận. Vượt cap thì từ chối. Lần ghi này không phát sinh phí.",
     "caps": [
-      { "service": "firebase", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
-      { "service": "nineRouter", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
-      { "service": "browser", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" }
+      { "service": "firebase", "monthlyCap": 0, "currency": "USD", "status": "cap-recorded" },
+      { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
     ]
   },
   "staging": {
-    "status": "absent",
-    "environment": null
+    "status": "owner-reported-present",
+    "verified": false,
+    "environment": null,
+    "independentStagingOwner": false,
+    "probed": false,
+    "note": "Chủ repo báo staging đã có. Chưa có evidence an toàn và staging owner vẫn trùng requester. Không probe."
   },
   "browserPolicy": {
-    "realAutomation": "forbidden",
+    "realAutomation": "staging-only",
+    "production": "forbidden",
     "launch": false,
+    "monthlyCapUsd": 1,
+    "heldUntil": ["staging-verified", "browser-evidence-valid", "owner-collision-resolved", "approval-gates-passed"],
     "adapters": ["mock", "playwright-stub", "skyvern-stub", "browser-use-stub"]
   },
   "zaloEofficePolicy": {
-    "actions": "forbidden"
+    "authorization": "scope-pending",
+    "scope": null,
+    "actions": "locked",
+    "executed": false,
+    "note": "Chủ repo muốn cho phép trong một phạm vi cụ thể nhưng chưa đưa scope hay action. Không suy diễn."
   }
 }

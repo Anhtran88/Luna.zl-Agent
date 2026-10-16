@@ -16,17 +16,19 @@ npm run security:check
 
 Bảy vai đã được chủ repo gán cho **kenbi**, nhưng đó là **owner collision**. Separation-of-duties giữ **BLOCKED**. Không suy diễn thành bảy handle khác nhau. Approver, security reviewer và credential owner trùng requester nên governance, staging và production vẫn NO-GO.
 
-Ngân sách: **chưa phê duyệt**, chưa có cap. “Ưu tiên tiết kiệm” không phải số tiền.
+Ngân sách: cap tháng đã ghi và **không phải quyền chi**. Firebase tối đa **0 USD**, 9Router tối đa **1 USD**, Browser tối đa **1 USD**. Lần này không phát sinh phí. Vượt cap thì từ chối và không gọi dịch vụ. Bằng chứng ngân sách vẫn BLOCKED.
 
 | Dịch vụ | Cap tối đa / tháng | Tiền tệ | Trạng thái |
 | --- | --- | --- | --- |
-| Firebase | chưa điền | chưa điền | chưa phê duyệt |
-| 9Router | chưa điền | chưa điền | chưa phê duyệt |
-| Browser | chưa điền | chưa điền | chưa phê duyệt |
+| Firebase | 0 | USD | cap đã ghi, evidence BLOCKED |
+| 9Router | 1 | USD | cap đã ghi, evidence BLOCKED |
+| Browser | 1 | USD | cap đã ghi, evidence BLOCKED |
 
-Staging: **chưa có môi trường**. Không suy đoán URL.
+Staging: chủ repo báo **đã có** (`owner-reported-present`) nhưng `verified=false`. Không probe, không lưu URL hay credential. Staging owner vẫn là kenbi nên chưa độc lập.
 
-Browser automation thật: **cấm**. Playwright, Skyvern và Browser Use giữ stub, launch off. Zalo/eOffice: **không được thao tác**.
+Browser automation: policy **chỉ staging**, cap 1 USD/tháng. Launch **tắt** cho tới khi staging được xác minh, evidence browser hợp lệ, hết owner collision và approval gate đạt. Production browser **cấm**. Playwright, Skyvern và Browser Use giữ stub.
+
+Zalo/eOffice: `authorization=scope-pending`. Chưa có scope hay action. Mọi thao tác thật vẫn khóa. Không suy diễn, không đăng nhập, không gửi hay ghi dữ liệu.
 
 License package: **MIT**. Copyright trong `LICENSE` dùng GitHub login `Anhtran88` vì profile không có tên pháp lý. Chủ repo thay nếu muốn tên khác. License không chuyển GO.
 
@@ -37,10 +39,10 @@ Mẫu trống, không có dữ liệu thật, nằm ở [config/readiness](../co
 | Mẫu | Chủ repo điền ngoài repo |
 | --- | --- |
 | `role-assignment.template.json` | Mọi vai là kenbi và BLOCKED vì collision. Không điền handle khác hộ chủ repo. |
-| `staging-confirmation.template.json` | Mã staging, scope `staging`, SHA-256, hạn, approval reference. Không ghi URL. |
-| `budget-approval.template.json` | Mã ngân sách, scope `budget`. Không ghi số tài khoản. |
+| `staging-confirmation.template.json` | Mã staging, scope `staging`, SHA-256, hạn, approval reference. Status hiện là owner-reported-present, verified false. Không ghi URL. |
+| `budget-approval.template.json` | Cap tháng đã ghi. Mã ngân sách vẫn thiếu. Không ghi số tài khoản. |
 | `security-legal-approval.template.json` | Mã phê duyệt an ninh và pháp lý. |
-| `browser-zalo-policy.template.json` | Mã policy browser và Zalo/eOffice. Không bật browser và không đăng nhập. |
+| `browser-zalo-policy.template.json` | Browser staging-only, launch off. Zalo/eOffice scope-pending. Không bật browser và không đăng nhập. |
 | `artifact-migration-backup.template.json` | Mã artifact, migration, backup và digest. |
 | `health-alerting.template.json` | Mã health và alerting từ quy trình riêng. Metadata local không phải probe. |
 | `evidence.schema.json` | Đủ mười một field. Mọi dòng đang BLOCKED. |

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { OWNER_ROLE_NAMES, ownerDecisionOwners } from "./owner-decisions.ts";
+import { OWNER_ROLE_NAMES, ownerDecisionOwners, summarizeOwnerPolicy } from "./owner-decisions.ts";
 import { assessOperations } from "./operations.ts";
 import { rulesDenyByDefault } from "./security.ts";
 
@@ -8,6 +8,7 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
   license?: string;
   dependencies?: Record<string, string>;
 };
+const ownerPolicy = summarizeOwnerPolicy();
 const report = assessOperations({
   env: process.env,
   owners: ownerDecisionOwners(),
@@ -53,6 +54,7 @@ process.stdout.write(
       compliance: report.compliance.map((item) => ({ id: item.id, ok: item.ok, severity: item.severity })),
       drills: report.drills.map((item) => ({ id: item.id, status: item.status, network: item.network })),
       goConditions: report.goConditions,
+      ownerPolicy,
     },
     null,
     2,
@@ -65,5 +67,12 @@ const safe =
   report.fakeSignOffAccepted === false &&
   report.networkCalls === 0 &&
   report.alertsSent === 0 &&
-  report.productionDeployed === false;
+  report.productionDeployed === false &&
+  ownerPolicy.budget.chargedUsd === 0 &&
+  ownerPolicy.budget.withinCap === true &&
+  ownerPolicy.browser.launch === false &&
+  ownerPolicy.zaloEoffice.executed === false &&
+  ownerPolicy.staging.verified === false &&
+  ownerPolicy.staging.probed === false &&
+  ownerPolicy.staging.environment === null;
 process.exit(safe ? 0 : 1);

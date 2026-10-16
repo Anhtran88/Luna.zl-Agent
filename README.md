@@ -28,7 +28,7 @@ npm run governance:check
 npm run ops:check
 ```
 
-`ops:check` in NO-GO. Chủ repo gán mọi vai cho kenbi; đó là owner collision, không phải GO. License MIT. Staging chưa có. Browser và Zalo/eOffice bị cấm. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Quyết định: [config/readiness/owner-decisions.json](config/readiness/owner-decisions.json).
+`ops:check` in NO-GO. Chủ repo gán mọi vai cho kenbi; đó là owner collision, không phải GO. License MIT. Cap tháng đã ghi và lần này chi 0. Staging được báo đã có nhưng chưa verified. Browser launch tắt. Zalo/eOffice đang scope-pending. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Quyết định: [config/readiness/owner-decisions.json](config/readiness/owner-decisions.json).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 

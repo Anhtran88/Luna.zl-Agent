@@ -1,9 +1,19 @@
 {
   "decision": "NO-GO",
   "authorization": "not-granted",
-  "note": "Browser automation thật bị cấm. Zalo và eOffice bị cấm thao tác. Adapter vẫn stub, launch off. Evidence vẫn BLOCKED vì chưa có digest tách biệt.",
-  "browserPolicy": { "realAutomation": "forbidden", "launch": false },
-  "zaloEofficePolicy": { "actions": "forbidden" },
+  "note": "Browser chỉ được xét trong staging và launch vẫn tắt. Production browser bị cấm. Zalo/eOffice đang scope-pending nên mọi thao tác thật vẫn khóa. Evidence vẫn BLOCKED.",
+  "browserPolicy": {
+    "realAutomation": "staging-only",
+    "production": "forbidden",
+    "launch": false,
+    "monthlyCapUsd": 1
+  },
+  "zaloEofficePolicy": {
+    "authorization": "scope-pending",
+    "scope": null,
+    "actions": "locked",
+    "executed": false
+  },
   "records": [
     { "field": "browser-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "browser", "approval_reference": null, "status": "BLOCKED" },
     { "field": "zalo-eoffice-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "zalo-eoffice", "approval_reference": null, "status": "BLOCKED" }

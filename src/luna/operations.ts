@@ -1,4 +1,5 @@
 import { unexpectedEndpointKey } from "./deploy.ts";
+import { evaluateMonthlySpend, type BudgetService } from "./owner-decisions.ts";
 import { EVIDENCE_FIELDS, evaluateGovernance, SOD_ROLES, type SodRole } from "./policy.ts";
 import { correlationId } from "./reliability.ts";
 import { EVIDENCE_SCOPES, roleBoard, type EvidenceFieldId, type RoleSlot } from "./readiness-pack.ts";
@@ -33,6 +34,8 @@ export const GO_CONDITIONS = [
   "Health production và alerting ngoài được xác nhận bằng quy trình riêng. Phase này không probe.",
   "Package khai báo license. SBOM local không đủ để chuyển GO.",
   "Không có risk acceptance nào mở production lock.",
+  "Cap tháng không phải quyền chi. Vượt cap thì từ chối và không gọi dịch vụ.",
+  "Staging được báo đã có nhưng chưa verified không phải xác nhận. Browser launch và Zalo/eOffice vẫn khóa.",
   "Chủ repo ký ngoài repository. Phase 12 không chuyển GO.",
 ] as const;
 
@@ -199,6 +202,7 @@ export interface OperationsInput {
   redactionSample?: string;
   fetchImpl?: () => Promise<unknown>;
   roleNames?: Partial<Record<RoleSlot["id"], string>>;
+  proposedSpend?: Partial<Record<BudgetService, number>>;
 }
 
 export function evidenceDigest(field: string, sourceType: string, body: string): string {
@@ -233,6 +237,7 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
     checklist.push(item(`role:${role}`, kind === "ok", "critical", roleDetail(role, kind)));
   }
   checklist.push(collisionItem(usable));
+  checklist.push(budgetCapItem(input.proposedSpend));
 
   const registry = TRACKED_FIELDS.map((field) => recordEvidence(field, input.evidence ?? [], now));
   for (const row of registry) {
@@ -703,6 +708,19 @@ function evidenceDetail(row: EvidenceRecord): string {
       : `${row.field} chỉ là ghi chú local. Không phải probe.`;
   }
   return evidenceCompliance(row.field, [row]);
+}
+
+function budgetCapItem(proposed: Partial<Record<BudgetService, number>> | undefined): ChecklistItem {
+  const services = ["firebase", "nineRouter", "browser"] as const;
+  const ok = services.every((service) => evaluateMonthlySpend(service, proposed?.[service] ?? 0).ok);
+  return item(
+    "budget-cap",
+    ok,
+    "critical",
+    ok
+      ? "Đề xuất nằm trong cap tháng. Lần này không phát sinh phí. Vượt cap thì từ chối."
+      : "Đề xuất vượt cap hoặc không hợp lệ. Từ chối và không gọi dịch vụ.",
+  );
 }
 
 function collisionItem(owners: Map<SodRole, string>): ChecklistItem {

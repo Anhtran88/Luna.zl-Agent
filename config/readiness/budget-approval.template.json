@@ -1,14 +1,15 @@
 {
   "decision": "NO-GO",
   "authorization": "not-granted",
-  "note": "Chưa phê duyệt và chưa có cap. Ưu tiên tiết kiệm không phải số tiền. Điền monthlyCap và currency khi có. Không ghi tài khoản hay secret.",
+  "note": "Cap tháng đã ghi. Đây không phải quyền chi và không phải bằng chứng. Vượt cap thì từ chối. Không ghi tài khoản hay secret.",
   "budget": {
-    "status": "unapproved",
-    "preference": "cost-saving",
+    "status": "caps-recorded",
+    "currency": "USD",
+    "chargedUsd": 0,
     "caps": [
-      { "service": "firebase", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
-      { "service": "nineRouter", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" },
-      { "service": "browser", "monthlyCap": null, "currency": null, "status": "chưa phê duyệt" }
+      { "service": "firebase", "monthlyCap": 0, "currency": "USD", "status": "cap-recorded" },
+      { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
     ]
   },
   "records": [
