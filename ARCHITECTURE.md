@@ -99,9 +99,17 @@ URL có userinfo hoặc query bị từ chối để secret không nằm trong c
 | 2     | Schema v1 và URL project lunazl-agent, live vẫn khóa | Người giữ REST credential trước khi cho phép connect |
 | 3     | 9Router live                               | Quyết định chi phí và provider                 |
 | 4     | Adapter browser thật, vẫn dry-run mặc định | Chính sách duyệt thao tác trình duyệt          |
-| 5     | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
+| 5     | Deployment dry-run local/staging           | Không publish. Staging có mạng cần chủ repo    |
+| 6     | Security hardening local                   | Không mở mạng, không đổi rules trên console    |
+| 7     | Production readiness, mặc định NO-GO       | Staging, credential, ngân sách, policy         |
+| 8     | Staging readiness, mặc định NO-GO          | URL, chủ môi trường, credential, ngân sách    |
+| 9     | Production go/no-go, mặc định NO-GO        | Sign-off, ngân sách, pháp lý, policy           |
+| 10    | Validation mô phỏng, không phải production | Không báo đã deploy                        |
+| 11    | Governance local, không nhận cờ giả        | Owner tách biệt, ngân sách, pháp lý            |
+| 12    | Operational readiness local, mặc định NO-GO | Evidence, owner, budget, health, alerting    |
+| 13    | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
 
-Phase 5 không bắt đầu chỉ vì các port đã có. Không có hành động production nào trong các phase trước nếu chủ repo chưa chấp nhận.
+Phase 12 không gọi mạng và không biến evidence local thành quyền deploy. Zalo và eOffice vẫn chưa bắt đầu. Phase 11 không biến một cờ môi trường thành sign-off.
 
 ## Quyết định kỹ thuật đã chốt
 
@@ -129,6 +137,26 @@ Model Router có thể giả lập timeout hoặc unavailable. Số lần thử 
 
 Browser Orchestrator công bố contract cho `mock`, `playwright`, `skyvern` và `browser-use`. Mọi contract có `liveLaunch: false`. Stub không được gọi.
 
+## Phase 4 controlled adapters
+
+Contract nằm ở `src/luna/adapters.ts`. Firebase mặc định là memory và offline. 9Router mặc định là mock, `evaluateNineRouterConnect` không gọi `fetch` dù live được yêu cầu hoặc key được cấu hình. Playwright, Skyvern và Browser Use có `liveLaunch: false`.
+
+Emulator Firebase vẫn là `InProcessRtdbTransport` và từ chối URL production. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+## Phase 5 controlled deployment
+
+Ba môi trường được tách bằng `LUNA_DEPLOY_TARGET`: `local`, `staging`, `production`. Mặc định là local. Production luôn thất bại preflight, kể cả khi `LUNA_DEPLOY_PRODUCTION_OPT_IN=true`. Staging chỉ được dry-run nếu URL trống hoặc là loopback. URL public làm preflight thất bại và không được fetch.
+
+`npm run deploy:dry-run` quét file công khai, biến môi trường và artifact local. Nó không đọc `.env`, không deploy Firebase rules, không publish và không mở socket. Health check từ chối mọi URL không phải `http` trên `127.0.0.1` hoặc `localhost`. Rollback là `local-no-op`: không đổi process đang chạy và không gọi hosting.
+
+Workflow [`.github/workflows/deploy-dry-run.yml`](.github/workflows/deploy-dry-run.yml) chỉ chạy preflight với quyền `contents: read`.
+
+## Phase 6 security hardening
+
+`src/luna/security.ts` quét secret mà không trả giá trị, buộc Firebase rules deny-all, redact audit và lỗi, và giữ live gate ở `false`. Rate-limit là bộ đếm trong tiến trình. Header an toàn không khoá iframe của preview.
+
+Mô hình đe doạ, ranh giới tin cậy và rollback sự cố: [docs/SECURITY.md](docs/SECURITY.md).
+
 ## GitHub
 
-Nhánh làm việc là `phase-0-1-bootstrap`. Remote chính thức là [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). Draft PR [pull/1](https://github.com/Anhtran88/Luna.zl-Agent/pull/1) vào `main` vẫn để mở, chưa merge. Khảo sát lúc repo trống nằm ở [docs/SURVEY.md](docs/SURVEY.md). Không đưa token vào source.
+`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 11 vẫn là draft. Phase 12 ở `phase-12-operational-readiness`: checklist vận hành local, không chuyển GO. Không đưa token vào source.
