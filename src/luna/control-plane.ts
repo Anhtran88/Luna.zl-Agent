@@ -488,7 +488,7 @@ function moduleCatalog(
       id: "operations",
       name: "Operations",
       state: "locked",
-      detail: `NO-GO. Evidence ${operations.evidenceScore}/100. ${operations.blockers} điều kiện vận hành còn mở.`,
+      detail: `NO-GO. Evidence ${operations.evidenceScore}/100. ${operations.rolesBlocked} vai BLOCKED.`,
     },
   ];
 }

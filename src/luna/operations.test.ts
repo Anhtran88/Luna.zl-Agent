@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { SOD_ROLES } from "./policy.ts";
 import { DRILL_IDS, SCORE_FIELDS, assessOperations, evidenceDigest, summarizeOperations } from "./operations.ts";
+import { EVIDENCE_SCOPES } from "./readiness-pack.ts";
 
 const SECRET = "sk-notarealkey123456";
 const PUBLIC = "https://ops.example.test/app";
@@ -18,6 +19,8 @@ function localEvidence(fields: readonly string[] = SCORE_FIELDS) {
     body: `record-${field}`,
     expiresAt: LATER,
     digest: evidenceDigest(field, "owner-record", `record-${field}`),
+    scope: EVIDENCE_SCOPES[field as keyof typeof EVIDENCE_SCOPES],
+    approvalReference: `apr-${field}`,
   }));
 }
 
@@ -43,7 +46,13 @@ describe("phase 12 operations", () => {
     }
     assert.equal(empty.checklist.find((row) => row.id === "owner-collision")?.ok, true);
     assert.equal(empty.checklist.find((row) => row.id === "evidence:budget")?.ok, false);
+    assert.equal(empty.roles.length, 7);
+    assert.equal(empty.roles.every((role) => role.status === "BLOCKED" && role.assignee === null), true);
+    assert.equal(empty.roles.find((role) => role.id === "staging-owner")?.status, "BLOCKED");
     assert.equal(empty.registry.find((row) => row.field === "backup")?.status, "missing");
+    assert.equal(empty.registry.find((row) => row.field === "backup")?.gate, "BLOCKED");
+    assert.equal(empty.registry.find((row) => row.field === "backup")?.sha256, "absent");
+    assert.equal(empty.registry.find((row) => row.field === "health")?.approval_reference, null);
     assert.equal(empty.compliance.find((row) => row.id === "backup")?.ok, false);
     assert.equal(empty.compliance.find((row) => row.id === "production-health")?.ok, false);
     assert.equal(empty.compliance.find((row) => row.id === "production-alerting")?.ok, false);
@@ -56,6 +65,7 @@ describe("phase 12 operations", () => {
     assert.equal(empty.risks[0]?.id, "production-lock");
     assert.equal(empty.risks[0]?.bypassesProduction, false);
     assert.equal(summarizeOperations(empty).decision, "NO-GO");
+    assert.equal(summarizeOperations(empty).rolesBlocked, 7);
     assert.match(readFileSync("docs/OPERATIONS.md", "utf8"), /NO-GO/);
     assert.match(readFileSync("docs/OPERATIONS.md", "utf8"), /không chấp nhận cờ/);
   });
@@ -118,6 +128,7 @@ describe("phase 12 operations", () => {
     assert.equal(report.checklist.find((row) => row.id === "fake-sign-off")?.ok, false);
     assert.equal(report.checklist.find((row) => row.id === "owner-collision")?.ok, false);
     assert.equal(report.checklist.find((row) => row.id === "role:credential-owner")?.ok, false);
+    assert.equal(report.roles.every((role) => role.status === "BLOCKED" && role.assignee === null), true);
     assert.equal(report.compliance.find((row) => row.id === "live-flags")?.ok, false);
     assert.equal(report.compliance.find((row) => row.id === "public-endpoint")?.ok, false);
     assert.equal(report.compliance.find((row) => row.id === "browser-launch")?.ok, false);
@@ -182,10 +193,61 @@ describe("phase 12 operations", () => {
     assert.equal(report.risks.find((row) => row.status === "accepted")?.bypassesProduction, false);
     assert.equal(report.audit.find((row) => row.action === "ops.decide")?.outcome, "recorded");
     assert.equal(report.audit.every((row) => row.dryRun && row.network === false), true);
+    assert.equal(report.roles.every((role) => role.status === "RECORDED" && role.assignee === null), true);
+    assert.equal(report.registry.find((row) => row.field === "budget")?.gate, "RECORDED");
+    assert.equal(report.registry.find((row) => row.field === "budget")?.scope, "budget");
+    assert.equal(report.registry.find((row) => row.field === "health")?.status, "missing");
     const body = JSON.stringify(report);
     assert.equal(body.includes("handle-requester"), false);
     assert.equal(body.includes("person-a"), false);
     assert.equal(body.includes("record-budget"), false);
     assert.ok(report.goConditions.length >= 5);
+  });
+
+  it("rejects the wrong scope, a bad approval reference, and blank owner templates", () => {
+    const budget = localEvidence(["budget"])[0];
+    const wrong = assessOperations({
+      now: NOW,
+      evidence: [{ ...budget, scope: "production" }],
+    });
+    assert.equal(wrong.decision, "NO-GO");
+    assert.equal(wrong.registry.find((row) => row.field === "budget")?.status, "wrong-scope");
+    assert.equal(wrong.registry.find((row) => row.field === "budget")?.gate, "BLOCKED");
+    assert.equal(wrong.registry.find((row) => row.field === "budget")?.scope, "production");
+    assert.equal(JSON.stringify(wrong).includes("record-budget"), false);
+
+    const leaked = assessOperations({
+      now: NOW,
+      evidence: [{ ...budget, approvalReference: `token=${SECRET}`, scope: "https://budget.example.test/a" }],
+    });
+    assert.equal(leaked.registry.find((row) => row.field === "budget")?.status, "rejected");
+    assert.equal(leaked.registry.find((row) => row.field === "budget")?.approval_reference, null);
+    assert.equal(leaked.registry.find((row) => row.field === "budget")?.scope, null);
+    const leakedBody = JSON.stringify(leaked);
+    assert.equal(leakedBody.includes(SECRET), false);
+    assert.equal(leakedBody.includes("budget.example"), false);
+
+    const files = [
+      "config/readiness/role-assignment.template.json",
+      "config/readiness/evidence.schema.json",
+      "config/readiness/staging-confirmation.template.json",
+      "config/readiness/budget-approval.template.json",
+      "config/readiness/security-legal-approval.template.json",
+      "config/readiness/browser-zalo-policy.template.json",
+      "config/readiness/artifact-migration-backup.template.json",
+      "config/readiness/health-alerting.template.json",
+    ];
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      const parsed = JSON.parse(text) as { decision: string; roles?: Array<{ assignee: null; status: string }> };
+      assert.equal(parsed.decision, "NO-GO", file);
+      assert.equal(text.includes("https://"), false, file);
+      assert.equal(text.includes(SECRET), false, file);
+      assert.equal(text.includes("BLOCKED"), true, file);
+      for (const role of parsed.roles ?? []) {
+        assert.equal(role.assignee, null);
+        assert.equal(role.status, "BLOCKED");
+      }
+    }
   });
 });

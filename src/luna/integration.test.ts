@@ -39,6 +39,7 @@ describe("phase 3 controlled flow", () => {
     assert.equal(snapshot.operations.authorization, "not-granted");
     assert.equal(snapshot.operations.goEligible, false);
     assert.equal(snapshot.operations.networkCalls, 0);
+    assert.equal(snapshot.operations.rolesBlocked, 7);
     const moduleIds = snapshot.modules.map((module) => module.id);
     assert.equal(new Set(moduleIds).size, moduleIds.length);
     assert.ok(moduleIds.includes("policy"));

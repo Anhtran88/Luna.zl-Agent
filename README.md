@@ -28,7 +28,7 @@ npm run governance:check
 npm run ops:check
 ```
 
-`ops:check` in NO-GO, evidence score và compliance. Không nhận cờ xác nhận giả, không gửi telemetry và không gọi mạng. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Policy: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
+`ops:check` in NO-GO, evidence score và bảy vai BLOCKED. Không nhận cờ xác nhận giả, không gửi telemetry và không gọi mạng. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Mẫu trống cho chủ repo: [config/readiness](config/readiness). Policy: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -46,7 +46,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 11 vẫn là draft. Phase 12 làm trên `phase-12-operational-readiness` và chưa merge. Checklist vận hành nằm ở [docs/OPERATIONS.md](docs/OPERATIONS.md). Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 11 vẫn là draft. Phase 12 làm trên `phase-12-operational-readiness` và `phase-12-readiness-verification`, chưa merge. Checklist và mẫu trống nằm ở [config/readiness](config/readiness). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

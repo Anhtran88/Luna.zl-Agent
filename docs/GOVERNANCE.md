@@ -43,4 +43,6 @@ Thiếu bất kỳ mục trên, hoặc có cờ xác nhận giả, thì staging 
 
 ## Phase 12
 
-Operational readiness không đổi RACI và không chấp nhận cờ. Sổ bằng chứng chỉ lưu digest, thời điểm và source-type. Secret, URL và `*_CONFIRMED=true` bị từ chối. Đủ bằng chứng local vẫn là NO-GO. Xem [OPERATIONS.md](OPERATIONS.md).
+Operational readiness không đổi RACI và không chấp nhận cờ. Sổ bằng chứng chỉ lưu `evidence_id`, `source_type`, `created_at`, `expires_at`, `sha256`, `scope` và `approval_reference`. Secret, URL và `*_CONFIRMED=true` bị từ chối. Sai SHA, sai scope, hết hạn hoặc thiếu field thì BLOCKED. Đủ metadata local vẫn là NO-GO.
+
+Mẫu trống cho chủ repo nằm ở `config/readiness/`. Không điền tên hay credential vào git. Xem [OPERATIONS.md](OPERATIONS.md).

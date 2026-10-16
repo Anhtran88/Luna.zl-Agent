@@ -226,6 +226,7 @@ export interface ControlPlaneSnapshot {
     goEligible: false;
     networkCalls: 0;
     blockers: number;
+    rolesBlocked: number;
   };
 }
 

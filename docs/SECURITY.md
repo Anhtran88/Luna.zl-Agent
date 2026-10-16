@@ -1,6 +1,6 @@
 # An ninh Phase 6
 
-Phase 6 siết an ninh local. Phase 7 đến 10 giữ production ở NO-GO. Phase 11 thêm policy: cờ xác nhận không phải sign-off, vai không được trùng, và audit không chứa credential. Phase 12 thêm sổ bằng chứng có digest và compliance liên tục. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
+Phase 6 siết an ninh local. Phase 7 đến 10 giữ production ở NO-GO. Phase 11 thêm policy: cờ xác nhận không phải sign-off, vai không được trùng, và audit không chứa credential. Phase 12 thêm sổ bằng chứng có digest, scope và approval reference. Mẫu ở `config/readiness/` không chứa secret. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
 
 ## Threat model
 

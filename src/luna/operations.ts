@@ -1,6 +1,7 @@
 import { unexpectedEndpointKey } from "./deploy.ts";
 import { EVIDENCE_FIELDS, evaluateGovernance, SOD_ROLES, type SodRole } from "./policy.ts";
 import { correlationId } from "./reliability.ts";
+import { EVIDENCE_SCOPES, roleBoard, type EvidenceFieldId, type RoleSlot } from "./readiness-pack.ts";
 import { containsSecret, evaluateLiveGate, redactAuditDetail } from "./security.ts";
 
 type Env = Record<string, string | undefined>;
@@ -57,7 +58,16 @@ const PERMANENT = new Set([
 ]);
 
 export type EvidenceSource = "local-file" | "owner-record" | "drill" | "missing";
-export type EvidenceStatus = "present" | "missing" | "expired" | "tampered" | "rejected" | "local-only";
+export type EvidenceStatus =
+  | "present"
+  | "missing"
+  | "expired"
+  | "tampered"
+  | "rejected"
+  | "local-only"
+  | "wrong-scope"
+  | "incomplete";
+export type EvidenceGate = "BLOCKED" | "RECORDED";
 
 export interface ChecklistItem {
   id: string;
@@ -68,12 +78,20 @@ export interface ChecklistItem {
 
 export interface EvidenceRecord {
   id: string;
+  evidence_id: string;
   field: string;
   sourceType: EvidenceSource;
+  source_type: EvidenceSource;
   recordedAt: string;
+  created_at: string;
   expiresAt: string | null;
+  expires_at: string | null;
   digest: string;
+  sha256: string;
+  scope: string | null;
+  approval_reference: string | null;
   status: EvidenceStatus;
+  gate: EvidenceGate;
   redacted: true;
 }
 
@@ -133,6 +151,7 @@ export interface OperationsReport {
   risks: RiskDecision[];
   drills: DrillResult[];
   blockers: ChecklistItem[];
+  roles: RoleSlot[];
   goConditions: readonly string[];
   audit: OpsAudit[];
 }
@@ -144,6 +163,7 @@ export interface OperationsSummary {
   goEligible: false;
   networkCalls: 0;
   blockers: number;
+  rolesBlocked: number;
 }
 
 export interface EvidenceInput {
@@ -153,6 +173,8 @@ export interface EvidenceInput {
   digest?: string;
   recordedAt?: string;
   expiresAt?: string;
+  scope?: string;
+  approvalReference?: string;
 }
 
 export interface RiskInput {
@@ -298,6 +320,8 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
     ),
   ];
 
+  const collisionOk = checklist.find((row) => row.id === "owner-collision")?.ok === true;
+  const roles = roleBoard((sod) => checklist.find((row) => row.id === `role:${sod}`)?.ok === true, collisionOk);
   const risks = [standingRisk(), ...(input.risks ?? []).map((risk, index) => decideRisk(risk, index, now))];
   const drills = runDrills(registry, input.redactionSample);
   const blockers = [
@@ -330,6 +354,7 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
     risks,
     drills,
     blockers,
+    roles,
     goConditions: GO_CONDITIONS,
     audit: auditTrail(posture, live.violations, risks),
   };
@@ -343,42 +368,177 @@ export function summarizeOperations(report: OperationsReport): OperationsSummary
     goEligible: false,
     networkCalls: 0,
     blockers: report.blockers.length,
+    rolesBlocked: report.roles.filter((role) => role.status === "BLOCKED").length,
   };
 }
 
 function recordEvidence(field: string, rows: EvidenceInput[], now: string): EvidenceRecord {
   const submitted = rows.find((row) => row.field === field);
-  const base = {
-    id: `evidence:${field}`,
-    field,
-    recordedAt: submitted?.recordedAt ?? now,
-    expiresAt: submitted?.expiresAt ?? null,
-    redacted: true as const,
-  };
+  const recordedAt = submitted?.recordedAt ?? now;
+  const expiresAt = submitted?.expiresAt ?? null;
   if (!submitted || classify(submitted.body) === "missing") {
-    return { ...base, sourceType: "missing", digest: "absent", status: "missing" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType: "missing",
+      digest: "absent",
+      status: "missing",
+      scope: null,
+      approval: null,
+    });
   }
   const sourceType = submitted.sourceType ?? "owner-record";
   const kind = classify(submitted.body);
   if (kind === "fake" || kind === "secret") {
-    return { ...base, sourceType, digest: "redacted", status: "rejected" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: "redacted",
+      status: "rejected",
+      scope: null,
+      approval: null,
+    });
+  }
+  const approvalKind = classify(submitted.approvalReference);
+  if (approvalKind === "fake" || approvalKind === "secret") {
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: "redacted",
+      status: "rejected",
+      scope: null,
+      approval: null,
+    });
   }
   const body = submitted.body?.trim() ?? "";
   const computed = evidenceDigest(field, sourceType, body);
   const claimed = submitted.digest?.trim();
   if (claimed && !/^[a-f0-9]{64}$/i.test(claimed)) {
-    return { ...base, sourceType, digest: "redacted", status: "tampered" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: "redacted",
+      status: "tampered",
+      scope: safeScopeToken(submitted.scope),
+      approval: null,
+    });
   }
   if (claimed && claimed.toLowerCase() !== computed) {
-    return { ...base, sourceType, digest: "mismatch", status: "tampered" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: "mismatch",
+      status: "tampered",
+      scope: safeScopeToken(submitted.scope),
+      approval: null,
+    });
   }
   if (submitted.expiresAt && submitted.expiresAt <= now) {
-    return { ...base, sourceType, digest: computed, status: "expired" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: computed,
+      status: "expired",
+      scope: safeScopeToken(submitted.scope),
+      approval: approvalKind === "ok" ? submitted.approvalReference?.trim() ?? null : null,
+    });
+  }
+  const expected = EVIDENCE_SCOPES[field as EvidenceFieldId];
+  const given = submitted.scope?.trim().toLowerCase() ?? "";
+  if (!expected || given !== expected) {
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: computed,
+      status: "wrong-scope",
+      scope: safeScopeToken(given),
+      approval: approvalKind === "ok" ? submitted.approvalReference?.trim() ?? null : null,
+    });
+  }
+  if (approvalKind !== "ok") {
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: computed,
+      status: "incomplete",
+      scope: expected,
+      approval: null,
+    });
   }
   if (field === "health" || field === "alerting") {
-    return { ...base, sourceType, digest: computed, status: "local-only" };
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: computed,
+      status: "local-only",
+      scope: expected,
+      approval: submitted.approvalReference?.trim() ?? null,
+    });
   }
-  return { ...base, sourceType, digest: computed, status: "present" };
+  return schemaRecord({
+    field,
+    recordedAt,
+    expiresAt,
+    sourceType,
+    digest: computed,
+    status: "present",
+    scope: expected,
+    approval: submitted.approvalReference?.trim() ?? null,
+  });
+}
+
+function schemaRecord(input: {
+  field: string;
+  recordedAt: string;
+  expiresAt: string | null;
+  sourceType: EvidenceSource;
+  digest: string;
+  status: EvidenceStatus;
+  scope: string | null;
+  approval: string | null;
+}): EvidenceRecord {
+  const id = `evidence:${input.field}`;
+  return {
+    id,
+    evidence_id: id,
+    field: input.field,
+    sourceType: input.sourceType,
+    source_type: input.sourceType,
+    recordedAt: input.recordedAt,
+    created_at: input.recordedAt,
+    expiresAt: input.expiresAt,
+    expires_at: input.expiresAt,
+    digest: input.digest,
+    sha256: input.digest,
+    scope: input.scope,
+    approval_reference: input.approval,
+    status: input.status,
+    gate: input.status === "present" ? "RECORDED" : "BLOCKED",
+    redacted: true,
+  };
+}
+
+function safeScopeToken(value: string | undefined): string | null {
+  const text = value?.trim().toLowerCase() ?? "";
+  if (!/^[a-z0-9-]{1,32}$/.test(text)) return null;
+  return text;
 }
 
 function decideRisk(risk: RiskInput, index: number, now: string): RiskDecision {
@@ -501,6 +661,8 @@ function governanceEvidence(
     const row = rows.find((item) => item.field === field);
     if (!row?.body || classify(row.body) !== "ok") continue;
     if (row.expiresAt && row.expiresAt <= now) continue;
+    if ((row.scope?.trim().toLowerCase() ?? "") !== EVIDENCE_SCOPES[field]) continue;
+    if (classify(row.approvalReference) !== "ok") continue;
     const sourceType = row.sourceType ?? "owner-record";
     const body = row.body.trim();
     const claimed = row.digest?.trim();
@@ -521,6 +683,8 @@ function evidenceCompliance(field: string, registry: EvidenceRecord[]): string {
   if (status === "present") return `${field} có mã local và digest khớp.`;
   if (status === "expired") return `${field} đã hết hạn.`;
   if (status === "tampered") return `${field} lệch digest. Không in nội dung.`;
+  if (status === "wrong-scope") return `${field} sai scope. Không nhận.`;
+  if (status === "incomplete") return `${field} thiếu approval reference an toàn.`;
   if (status === "rejected") return `${field} bị từ chối vì cờ giả hoặc dữ liệu nhạy cảm.`;
   return `Thiếu bằng chứng ${field}.`;
 }

@@ -1,0 +1,19 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "metadata": ["evidence_id", "source_type", "created_at", "expires_at", "sha256", "scope", "approval_reference"],
+  "forbidden": ["secret", "token", "cookie", "private_key", "credential", "url", "confirmation_flag"],
+  "records": [
+    { "field": "staging-environment", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "staging", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "budget", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "budget", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "security-approval", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "security", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "legal-privacy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "legal", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "browser-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "browser", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "zalo-eoffice-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "zalo-eoffice", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "artifact", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "artifact", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "migration", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "migration", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "backup", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "backup", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "health", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "health", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "alerting", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "alerting", "approval_reference": null, "status": "BLOCKED" }
+  ]
+}

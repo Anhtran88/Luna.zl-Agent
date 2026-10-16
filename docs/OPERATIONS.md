@@ -14,9 +14,24 @@ npm run security:check
 
 ## Checklist
 
-Bảy vai đang unassigned: requester, approver, chủ staging, chủ credential, security reviewer, chủ rollback, chủ sự cố. Không gán cùng một người.
+Bảy vai đang **BLOCKED** và không được gán handle: requester, approver, staging owner, credential owner, security reviewer, rollback owner, incident owner. Thiếu vai nào thì vai đó giữ BLOCKED. Trùng handle thì cả bảng giữ BLOCKED.
 
-Bằng chứng cần mã opaque, digest SHA-256, timestamp và source-type: staging, ngân sách, phê duyệt an ninh, pháp lý, policy browser, policy Zalo/eOffice, artifact, migration, backup. Health production và alerting ngoài không được probe trong phase này.
+Bằng chứng chỉ lưu `evidence_id`, `source_type`, `created_at`, `expires_at`, `sha256`, `scope`, `approval_reference`. Thiếu bản ghi, hết hạn, sai SHA, sai scope, cờ giả, secret hoặc URL thì BLOCKED. Ngân sách, backup, health và alerting đang thiếu. License package chưa khai báo. Health và alerting không được probe trong phase này.
+
+Mẫu trống, không có dữ liệu thật, nằm ở [config/readiness](../config/readiness):
+
+| Mẫu | Chủ repo điền ngoài repo |
+| --- | --- |
+| `role-assignment.template.json` | Bảy handle khác nhau. Không ghi handle vào git. |
+| `staging-confirmation.template.json` | Mã staging, scope `staging`, SHA-256, hạn, approval reference. Không ghi URL. |
+| `budget-approval.template.json` | Mã ngân sách, scope `budget`. Không ghi số tài khoản. |
+| `security-legal-approval.template.json` | Mã phê duyệt an ninh và pháp lý. |
+| `browser-zalo-policy.template.json` | Mã policy browser và Zalo/eOffice. Không bật browser và không đăng nhập. |
+| `artifact-migration-backup.template.json` | Mã artifact, migration, backup và digest. |
+| `health-alerting.template.json` | Mã health và alerting từ quy trình riêng. Metadata local không phải probe. |
+| `evidence.schema.json` | Đủ mười một field. Mọi dòng đang BLOCKED. |
+
+Không commit bản đã điền. Không đưa secret, token, cookie, private key, credential hay URL vào mẫu.
 
 ## Diễn tập local
 
