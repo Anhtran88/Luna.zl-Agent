@@ -1,6 +1,6 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 11 thêm policy governance local. Cờ xác nhận không phải sign-off. Production vẫn NO-GO. Firebase, 9Router và browser vẫn locked.
+Bảng điều khiển Luna. Phase 12 thêm operational readiness local. Cờ xác nhận không phải sign-off. Production vẫn NO-GO. Firebase, 9Router và browser vẫn locked.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
@@ -25,9 +25,10 @@ npm run staging:check
 npm run production:check
 npm run validate:sim
 npm run governance:check
+npm run ops:check
 ```
 
-`governance:check` in NO-GO và không nhận cờ xác nhận giả. Không gửi telemetry và không gọi mạng. Policy: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
+`ops:check` in NO-GO, evidence score và compliance. Không nhận cờ xác nhận giả, không gửi telemetry và không gọi mạng. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Policy: [docs/GOVERNANCE.md](docs/GOVERNANCE.md).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -45,7 +46,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 10 vẫn là draft. Phase 11 làm trên `phase-11-security-governance` và chưa merge. Policy nằm ở [docs/GOVERNANCE.md](docs/GOVERNANCE.md). Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 11 vẫn là draft. Phase 12 làm trên `phase-12-operational-readiness` và chưa merge. Checklist vận hành nằm ở [docs/OPERATIONS.md](docs/OPERATIONS.md). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

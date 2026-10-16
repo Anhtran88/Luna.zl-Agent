@@ -2,7 +2,7 @@
 
 export const LUNA_PHASE = "2-foundations" as const;
 /** Visible release. Stored schema phase stays v1-compatible. */
-export const LUNA_RELEASE = "11-governance" as const;
+export const LUNA_RELEASE = "12-operations" as const;
 
 export class LunaError extends Error {
   readonly code: string;
@@ -216,6 +216,14 @@ export interface ControlPlaneSnapshot {
     decision: "NO-GO";
     authorization: "not-granted";
     fakeSignOffAccepted: false;
+    networkCalls: 0;
+    blockers: number;
+  };
+  operations: {
+    decision: "NO-GO";
+    authorization: "not-granted";
+    evidenceScore: number;
+    goEligible: false;
     networkCalls: 0;
     blockers: number;
   };

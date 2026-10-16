@@ -31,6 +31,7 @@ import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.
 import { assessProduction, summarizeProduction, type ProductionSummary } from "./production-gate.ts";
 import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
 import { evaluateGovernance, summarizeGovernance, type GovernanceSummary } from "./policy.ts";
+import { assessOperations, summarizeOperations, type OperationsSummary } from "./operations.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -53,6 +54,7 @@ export interface ControlPlaneDeps {
   production: ProductionSummary;
   validation: ValidationSummary;
   governance: GovernanceSummary;
+  operations: OperationsSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -91,6 +93,7 @@ export class LunaControlPlane {
       production: partial?.production ?? summarizeProduction(assessProduction({ env })),
       validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
       governance: partial?.governance ?? summarizeGovernance(evaluateGovernance({ env })),
+      operations: partial?.operations ?? summarizeOperations(assessOperations({ env })),
     });
   }
 
@@ -300,6 +303,7 @@ export class LunaControlPlane {
         this.deps.production,
         this.deps.validation,
         this.deps.governance,
+        this.deps.operations,
       ),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
@@ -338,6 +342,7 @@ export class LunaControlPlane {
       production: this.deps.production,
       validation: this.deps.validation,
       governance: this.deps.governance,
+      operations: this.deps.operations,
     };
   }
 
@@ -393,13 +398,14 @@ function moduleCatalog(
   production: ProductionSummary,
   validation: ValidationSummary,
   governance: GovernanceSummary,
+  operations: OperationsSummary,
 ): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 11. Policy không nhận cờ giả và production vẫn NO-GO.",
+      detail: "Bảng điều khiển Phase 12. Compliance local vẫn NO-GO.",
     },
     {
       id: "agent",
@@ -477,6 +483,12 @@ function moduleCatalog(
       name: "Governance",
       state: "locked",
       detail: `NO-GO. ${governance.blockers} điều kiện policy còn mở. Cờ xác nhận không được chấp nhận.`,
+    },
+    {
+      id: "operations",
+      name: "Operations",
+      state: "locked",
+      detail: `NO-GO. Evidence ${operations.evidenceScore}/100. ${operations.blockers} điều kiện vận hành còn mở.`,
     },
   ];
 }

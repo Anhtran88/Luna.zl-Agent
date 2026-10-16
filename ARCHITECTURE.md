@@ -106,9 +106,10 @@ URL có userinfo hoặc query bị từ chối để secret không nằm trong c
 | 9     | Production go/no-go, mặc định NO-GO        | Sign-off, ngân sách, pháp lý, policy           |
 | 10    | Validation mô phỏng, không phải production | Không báo đã deploy                        |
 | 11    | Governance local, không nhận cờ giả        | Owner tách biệt, ngân sách, pháp lý            |
-| 12    | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
+| 12    | Operational readiness local, mặc định NO-GO | Evidence, owner, budget, health, alerting    |
+| 13    | Zalo / eOffice                             | Quyết định sản phẩm riêng. Không tự triển khai |
 
-Phase 12 không bắt đầu chỉ vì các port đã có. Phase 11 không biến một cờ môi trường thành sign-off.
+Phase 12 không gọi mạng và không biến evidence local thành quyền deploy. Zalo và eOffice vẫn chưa bắt đầu. Phase 11 không biến một cờ môi trường thành sign-off.
 
 ## Quyết định kỹ thuật đã chốt
 
@@ -158,4 +159,4 @@ Mô hình đe doạ, ranh giới tin cậy và rollback sự cố: [docs/SECURIT
 
 ## GitHub
 
-`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 10 vẫn là draft. Phase 11 ở `phase-11-security-governance` và không nhận cờ xác nhận làm sign-off. Không đưa token vào source.
+`main` đã gồm [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 11 vẫn là draft. Phase 12 ở `phase-12-operational-readiness`: checklist vận hành local, không chuyển GO. Không đưa token vào source.

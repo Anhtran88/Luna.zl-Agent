@@ -40,3 +40,7 @@ A = thực hiện, C = phải đồng ý, I = được báo. Ô trống nghĩa l
 ## Điều kiện NO-GO
 
 Thiếu bất kỳ mục trên, hoặc có cờ xác nhận giả, thì staging và production là NO-GO. Kể cả khi đủ mục, phase này vẫn không gọi mạng.
+
+## Phase 12
+
+Operational readiness không đổi RACI và không chấp nhận cờ. Sổ bằng chứng chỉ lưu digest, thời điểm và source-type. Secret, URL và `*_CONFIRMED=true` bị từ chối. Đủ bằng chứng local vẫn là NO-GO. Xem [OPERATIONS.md](OPERATIONS.md).

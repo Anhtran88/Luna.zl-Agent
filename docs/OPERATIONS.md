@@ -1,13 +1,39 @@
-# Vận hành Phase 11
+# Vận hành Phase 12
 
-Phase 11 kiểm tra policy local. Production vẫn NO-GO. Không publish và không bật live.
+Phase 12 kiểm operational readiness và continuous compliance ở máy local. Production vẫn **NO-GO**. Quyền deploy **not-granted**. Phase này không chấp nhận cờ `*_CONFIRMED=true` làm sign-off.
 
 ```bash
+npm run ops:check
 npm run governance:check
 npm run validate:sim
 npm run production:check
 npm run security:check
 ```
+
+`ops:check` không gọi mạng. Báo cáo có evidence score, blocker id, compliance và sáu diễn tập. Không in handle hay credential.
+
+## Checklist
+
+Bảy vai đang unassigned: requester, approver, chủ staging, chủ credential, security reviewer, chủ rollback, chủ sự cố. Không gán cùng một người.
+
+Bằng chứng cần mã opaque, digest SHA-256, timestamp và source-type: staging, ngân sách, phê duyệt an ninh, pháp lý, policy browser, policy Zalo/eOffice, artifact, migration, backup. Health production và alerting ngoài không được probe trong phase này.
+
+## Diễn tập local
+
+Incident, rollback, backup/restore, dependency outage, secret/config missing và audit/redaction chạy trong tiến trình. Không dùng dữ liệu thật, không gửi alert, không restore ra ngoài bộ nhớ.
+
+Risk acceptance cần approver khác requester, hạn, scope `local` và mã bằng chứng. Scope production hoặc cờ bypass bị từ chối. `bypassesProduction` luôn là false.
+
+## Điều kiện để một phase sau được xét GO
+
+Phase 12 không chuyển GO. Chủ repo phải đưa, ngoài repository:
+
+1. Bảy handle khác nhau.
+2. Bằng chứng staging, ngân sách, an ninh, pháp lý, browser và Zalo/eOffice còn hạn, digest khớp, không phải cờ.
+3. Biên bản artifact, migration và backup.
+4. Health production và alerting được xác nhận bằng quy trình riêng.
+5. License của package. SBOM local không đủ.
+6. Không có ngoại lệ nào mở production lock.
 
 Policy: [GOVERNANCE.md](GOVERNANCE.md). An ninh: [SECURITY.md](SECURITY.md).
 

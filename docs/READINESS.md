@@ -2,7 +2,7 @@
 
 Quyết định production: **NO-GO**.
 
-Phase 10 chỉ mô phỏng validation local. Phase 11 không nhận cờ xác nhận làm sign-off và vẫn NO-GO. Xem [GOVERNANCE.md](GOVERNANCE.md).
+Phase 10 chỉ mô phỏng validation local. Phase 11 không nhận cờ xác nhận làm sign-off và vẫn NO-GO. Phase 12 chấm evidence score local và vẫn không chuyển GO. Xem [GOVERNANCE.md](GOVERNANCE.md) và [OPERATIONS.md](OPERATIONS.md).
 
 Điểm kỹ thuật local có thể là 100/100. Điểm đó không cho phép deploy. Cờ xác nhận của chủ repo, dù được đặt, cũng không bật Firebase, 9Router, browser hay production.
 
