@@ -25,6 +25,14 @@ import {
   type ModuleStatus,
   type StepResult,
 } from "./domain.ts";
+import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
+import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
+import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
+import { assessProduction, summarizeProduction, type ProductionSummary } from "./production-gate.ts";
+import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
+import { evaluateGovernance, summarizeGovernance, type GovernanceSummary } from "./policy.ts";
+import { assessOperations, summarizeOperations, type OperationsSummary } from "./operations.ts";
+import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
@@ -40,6 +48,13 @@ export interface ControlPlaneDeps {
   firebaseConfig: FirebasePublicConfig;
   modelConfig: NineRouterPublicConfig;
   store: LunaStore;
+  deployment: DeployPosture;
+  readiness: ReadinessSummary;
+  staging: StagingSummary;
+  production: ProductionSummary;
+  validation: ValidationSummary;
+  governance: GovernanceSummary;
+  operations: OperationsSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -72,6 +87,13 @@ export class LunaControlPlane {
       firebaseConfig,
       modelConfig,
       store: partial?.store ?? new MemoryLunaStore(),
+      deployment: partial?.deployment ?? describeDeployPosture(env),
+      readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
+      staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
+      production: partial?.production ?? summarizeProduction(assessProduction({ env })),
+      validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
+      governance: partial?.governance ?? summarizeGovernance(evaluateGovernance({ env })),
+      operations: partial?.operations ?? summarizeOperations(assessOperations({ env })),
     });
   }
 
@@ -83,6 +105,9 @@ export class LunaControlPlane {
     }
     if (title.length < 1 || title.length > 120) {
       throw new LunaError("VALIDATION", "Tiêu đề cần từ 1 đến 120 ký tự.");
+    }
+    if (containsSecret(goal) || containsSecret(title)) {
+      throw new LunaError("VALIDATION", "Nội dung không được chứa credential.");
     }
     const mode = input.mode ?? "dry-run";
     if (mode !== "dry-run" && mode !== "live") {
@@ -172,7 +197,7 @@ export class LunaControlPlane {
     }
     approval.status = decision;
     approval.decidedAt = this.deps.clock.now();
-    approval.note = note?.trim().slice(0, 280) || undefined;
+    approval.note = note ? redactAuditDetail(note).slice(0, 280) || undefined : undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
     await this.record({
       actor: "operator",
@@ -270,7 +295,16 @@ export class LunaControlPlane {
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode),
+      modules: moduleCatalog(
+        firebase.mode,
+        this.deps.deployment,
+        this.deps.readiness,
+        this.deps.staging,
+        this.deps.production,
+        this.deps.validation,
+        this.deps.governance,
+        this.deps.operations,
+      ),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -301,6 +335,14 @@ export class LunaControlPlane {
           stubs: ["playwright", "skyvern", "browser-use"],
         },
       },
+      deployment: this.deps.deployment,
+      security: SECURITY_POSTURE,
+      readiness: this.deps.readiness,
+      staging: this.deps.staging,
+      production: this.deps.production,
+      validation: this.deps.validation,
+      governance: this.deps.governance,
+      operations: this.deps.operations,
     };
   }
 
@@ -322,6 +364,7 @@ export class LunaControlPlane {
       at: this.deps.clock.now(),
       dryRun: true,
       ...input,
+      detail: redactAuditDetail(input.detail),
     };
     this.audits.push(event);
     await this.deps.store.appendAudit(event);
@@ -347,13 +390,22 @@ export class LunaControlPlane {
   }
 }
 
-function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): ModuleStatus[] {
+function moduleCatalog(
+  firebaseMode: "memory" | "disabled-live" | "rest",
+  deployment: DeployPosture,
+  readiness: ReadinessSummary,
+  staging: StagingSummary,
+  production: ProductionSummary,
+  validation: ValidationSummary,
+  governance: GovernanceSummary,
+  operations: OperationsSummary,
+): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 3. Không giữ secret và không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 12. Compliance local vẫn NO-GO.",
     },
     {
       id: "agent",
@@ -387,6 +439,56 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       name: "Approval & Audit",
       state: "ready",
       detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký. phaseLock không ghi tắt được.",
+    },
+    {
+      id: "deploy",
+      name: "Deployment",
+      state: deployment.blocked ? "locked" : "ready",
+      detail: deployment.blocked
+        ? `${deployment.target} bị chặn. Không publish, không rules, không mạng production.`
+        : `${deployment.target} dry-run. Chưa production và không gọi mạng ngoài.`,
+    },
+    {
+      id: "security",
+      name: "Security",
+      state: "locked",
+      detail: "Rules deny-all, header an toàn, rate-limit local. Live và production vẫn khóa.",
+    },
+    {
+      id: "readiness",
+      name: "Readiness",
+      state: "locked",
+      detail: `NO-GO. Điểm kỹ thuật ${readiness.technicalScore}. Còn ${readiness.ownerMissing} điều kiện chủ repo.`,
+    },
+    {
+      id: "staging",
+      name: "Staging",
+      state: "locked",
+      detail: `${staging.decision}. ${staging.blockers} điều kiện còn mở. Không gọi mạng.`,
+    },
+    {
+      id: "production",
+      name: "Production gate",
+      state: "locked",
+      detail: `NO-GO. Sign-off ${production.signOffComplete ? "đủ trên giấy" : "chưa đủ"}. Không cấp quyền deploy.`,
+    },
+    {
+      id: "validation",
+      name: "Validation",
+      state: "mock",
+      detail: `${validation.scope}. ${validation.scenarios} kịch bản local. Không phải production validation.`,
+    },
+    {
+      id: "policy",
+      name: "Governance",
+      state: "locked",
+      detail: `NO-GO. ${governance.blockers} điều kiện policy còn mở. Cờ xác nhận không được chấp nhận.`,
+    },
+    {
+      id: "operations",
+      name: "Operations",
+      state: "locked",
+      detail: `NO-GO. Evidence ${operations.evidenceScore}/100. ${operations.rolesBlocked} vai BLOCKED.`,
     },
   ];
 }
