@@ -29,6 +29,7 @@ import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
 import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
 import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
 import { assessProduction, summarizeProduction, type ProductionSummary } from "./production-gate.ts";
+import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
 import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
@@ -49,6 +50,7 @@ export interface ControlPlaneDeps {
   readiness: ReadinessSummary;
   staging: StagingSummary;
   production: ProductionSummary;
+  validation: ValidationSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
@@ -85,6 +87,7 @@ export class LunaControlPlane {
       readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
       staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
       production: partial?.production ?? summarizeProduction(assessProduction({ env })),
+      validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
     });
   }
 
@@ -292,6 +295,7 @@ export class LunaControlPlane {
         this.deps.readiness,
         this.deps.staging,
         this.deps.production,
+        this.deps.validation,
       ),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
@@ -328,6 +332,7 @@ export class LunaControlPlane {
       readiness: this.deps.readiness,
       staging: this.deps.staging,
       production: this.deps.production,
+      validation: this.deps.validation,
     };
   }
 
@@ -381,13 +386,14 @@ function moduleCatalog(
   readiness: ReadinessSummary,
   staging: StagingSummary,
   production: ProductionSummary,
+  validation: ValidationSummary,
 ): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 9. Production là NO-GO và chưa được deploy.",
+      detail: "Bảng điều khiển Phase 10. Validation chỉ là mô phỏng, production vẫn NO-GO.",
     },
     {
       id: "agent",
@@ -453,6 +459,12 @@ function moduleCatalog(
       name: "Production gate",
       state: "locked",
       detail: `NO-GO. Sign-off ${production.signOffComplete ? "đủ trên giấy" : "chưa đủ"}. Không cấp quyền deploy.`,
+    },
+    {
+      id: "validation",
+      name: "Validation",
+      state: "mock",
+      detail: `${validation.scope}. ${validation.scenarios} kịch bản local. Không phải production validation.`,
     },
   ];
 }

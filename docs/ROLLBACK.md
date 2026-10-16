@@ -2,6 +2,8 @@
 
 Chiến lược: **local-no-op**. Production đang **NO-GO**.
 
+Phase 10 tập rollback trong bộ nhớ: đổi nhãn release, shutdown, idempotency và từ chối payload có credential. Tập đó không đổi process đang phục vụ và không chạm dữ liệu thật.
+
 1. Nếu preflight thất bại, không đổi process đang chạy.
 2. Không gọi hosting, không deploy Firebase rules, không publish.
 3. Không mở firewall và không đọc dữ liệu thật.

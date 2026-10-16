@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Luna · Phase 9";
+const APP_NAME = "Luna · Phase 10";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Bảng điều khiển Luna Phase 9. Production là NO-GO.",
+          "Bảng điều khiển Luna Phase 10. Validation là mô phỏng, production là NO-GO.",
       },
       { name: "theme-color", content: "#101614" },
     ],

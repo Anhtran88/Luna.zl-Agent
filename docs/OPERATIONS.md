@@ -1,16 +1,15 @@
-# Vận hành Phase 9
+# Vận hành Phase 10
 
-Phase 9 kiểm tra go/no-go production. Kết luận là NO-GO. Không publish và không bật live.
+Phase 10 mô phỏng validation sau deployment. Production vẫn NO-GO. Không publish và không bật live.
 
 ```bash
+npm run validate:sim
 npm run production:check
-npm run staging:check
 npm run readiness
 npm run security:check
-npm run deploy:dry-run
 ```
 
-Hồ sơ: [RELEASE.md](RELEASE.md). Sự cố: [INCIDENT.md](INCIDENT.md). Rollback: [ROLLBACK.md](ROLLBACK.md).
+Báo cáo mô phỏng: [VALIDATION.md](VALIDATION.md). Hồ sơ production: [RELEASE.md](RELEASE.md).
 
 ## Môi trường
 

@@ -1,6 +1,6 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 9 lập hồ sơ production và kết luận NO-GO. Firebase, 9Router và browser vẫn locked. Không deploy và không đăng nhập Zalo hay eOffice.
+Bảng điều khiển Luna. Phase 10 mô phỏng post-deployment validation trên local. Production vẫn NO-GO và chưa được deploy. Firebase, 9Router và browser vẫn locked.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
@@ -23,9 +23,10 @@ npm run security:check
 npm run readiness
 npm run staging:check
 npm run production:check
+npm run validate:sim
 ```
 
-`production:check` luôn in NO-GO. Không gửi telemetry và không gọi mạng. Hồ sơ release: [docs/RELEASE.md](docs/RELEASE.md).
+`validate:sim` in `simulated-only` và `productionValidated: false`. Không gửi telemetry và không gọi mạng. Báo cáo: [docs/VALIDATION.md](docs/VALIDATION.md).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
@@ -43,7 +44,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 8 vẫn là draft. Phase 9 làm trên `phase-9-production-readiness` và chưa merge. Hồ sơ release nằm ở [docs/RELEASE.md](docs/RELEASE.md). Không đưa token vào source hay `.env.example`.
+Nhánh `main` đã nhận [pull/3](https://github.com/Anhtran88/Luna.zl-Agent/pull/3). Phase 4 đến 9 vẫn là draft. Phase 10 làm trên `phase-10-post-deployment-validation` và chưa merge. Báo cáo mô phỏng nằm ở [docs/VALIDATION.md](docs/VALIDATION.md). Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

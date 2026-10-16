@@ -2,7 +2,7 @@
 
 Quyết định production: **NO-GO**.
 
-Phase 8 thêm cổng staging và vẫn không deploy. Phase 9 thêm hồ sơ production và vẫn NO-GO. Xem [RELEASE.md](RELEASE.md). Staging có mạng và production đều cần chủ repo xác nhận trước khi có thể được xem lại.
+Phase 9 thêm hồ sơ production và vẫn NO-GO. Phase 10 chỉ mô phỏng validation local và không được hiểu là production đã chạy. Xem [VALIDATION.md](VALIDATION.md).
 
 Điểm kỹ thuật local có thể là 100/100. Điểm đó không cho phép deploy. Cờ xác nhận của chủ repo, dù được đặt, cũng không bật Firebase, 9Router, browser hay production.
 
