@@ -1,0 +1,18 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "note": "Cap tháng đã ghi. Đây không phải quyền chi và không phải bằng chứng. Vượt cap thì từ chối. Không ghi tài khoản hay secret.",
+  "budget": {
+    "status": "caps-recorded",
+    "currency": "USD",
+    "chargedUsd": 0,
+    "caps": [
+      { "service": "firebase", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
+    ]
+  },
+  "records": [
+    { "field": "budget", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "budget", "approval_reference": null, "status": "BLOCKED" }
+  ]
+}

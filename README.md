@@ -1,13 +1,13 @@
 # Luna
 
-Bảng điều khiển Luna. Phase 3 chạy flow dry-run có kiểm soát: tạo tác vụ, planner, duyệt, thực thi mô phỏng, audit và trạng thái kết thúc. Firebase live và 9Router live vẫn tắt. Không đăng nhập Zalo hay eOffice.
+Bảng điều khiển Luna. Phase 12 thêm operational readiness local. Cờ xác nhận không phải sign-off. Production vẫn NO-GO. Firebase, 9Router và browser vẫn locked.
 
 Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agent). Khảo sát ban đầu nằm ở [docs/SURVEY.md](docs/SURVEY.md). Kiến trúc nằm ở [ARCHITECTURE.md](ARCHITECTURE.md). Schema v1 nằm ở [docs/SCHEMA.md](docs/SCHEMA.md).
 
 ## Chạy local
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -15,12 +15,36 @@ npm run dev
 
 ```bash
 npm test
+npm run build
 npm run lint
 npm run typecheck
-npm run build
+npm run deploy:dry-run
+npm run security:check
+npm run readiness
+npm run staging:check
+npm run production:check
+npm run validate:sim
+npm run governance:check
+npm run ops:check
 ```
 
+`ops:check` in NO-GO. Chủ repo gán mọi vai cho kenbi; đó là owner collision, không phải GO. License MIT. Cap tháng mỗi dịch vụ là 1 USD và lần này chi 0. Staging logic tên luna-staging, chưa verified. Browser launch tắt. Zalo và eOffice chỉ là policy mô phỏng. Tên PDF giao nhận là `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf`; mã dự án chỉ SUN, HOL hoặc GRC, mã khác thì hỏi. Lần này không ghi file và storage root để trống. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Quyết định: [config/readiness/owner-decisions.json](config/readiness/owner-decisions.json).
+
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
+
+## Kiểm thử tái lập
+
+Staging RTDB dùng binding riêng; approve/execute mặc định fail-closed. Đã có [trusted session, signed SoD policy và transactional persistence](docs/TRUSTED_RUNTIME.md), nhưng chưa cấu hình account/owner authorization/database thật. [Local contract](docs/LOCAL_AUTH_STATE_CONTRACT.md) giữ cho demo và staging metadata. Không bật kết nối thật chỉ bằng cách điền URL hoặc live flag.
+
+`npm ci` rồi `npm test` chạy cả scripts và app tests. Số test được in bởi runner; không giữ số cố định của phase cũ làm tiêu chí. Bốn contract tests của tài liệu OG upstream sẽ ghi **SKIP** khi `.grok/skills/og` không được cung cấp. Đây là prompt của nền tảng bị git-ignore, không phải source cần để Luna chạy. Các kiểm tra `AGENTS.md` tracked và mọi kiểm tra chức năng vẫn chạy. Không tạo tài liệu giả để làm xanh.
+
+Để kiểm contract với nguồn upstream thật: `LUNA_OG_SKILL_DIR=/path/to/upstream/og npm run test:upstream`. Chế độ này bắt buộc tài liệu; thiếu/sai nội dung phải fail. Thư mục skill chỉ có một phần cũng không được tự skip. `config/app-env.json` cung cấp mặc định public auth-off cho checkout sạch; `.grok/app-env.json` tùy chọn và biến process vẫn có quyền override. Đây không phải cấu hình auth staging.
+
+## UI E2E local
+
+CLI `agent-browser` được pin trong dev dependencies, dùng Chromium cài sẵn hoặc `AGENT_BROWSER_EXECUTABLE_PATH`. Khi dev server đang chạy, dùng `npm run test:e2e`. Sau `npm run build` và `npm run preview:restart`, chạy `LUNA_E2E_URL=http://127.0.0.1:8081/ npm run test:e2e`.
+
+Runner kiểm desktop/mobile cho create → plan → approve/reject/execute bị deny khi chưa có trusted auth → cancel → audit/reload. Không tạo success audit hoặc đổi task từ lệnh bị deny. Core simulation kiểm happy dry-run riêng, Firebase write vẫn refused. Chỉ nhận loopback dev/built, chặn resource ngoài domain local, dùng session mới và đóng browser sau test. Browser này chỉ kiểm UI local; adapter browser của Luna vẫn mock/stub, launch off. Artifacts ở `screenshots/e2e-*` (cloud: `/workspace/screenshots/e2e-*`), không commit. CI chạy toàn bộ `npm test` và E2E dev/built.
 
 ## Phase 0/1 làm được gì
 
@@ -36,7 +60,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 Remote chính thức: [Anhtran88/Luna.zl-Agent](https://github.com/Anhtran88/Luna.zl-Agent). URL cũ `Luna.zl-agent` redirect về đó.
 
-Nhánh làm việc hiện tại cho Phase 3 là `phase-3-controlled-integration`, tách từ `phase-2-foundations`. Draft Phase 2 vẫn là [pull/2](https://github.com/Anhtran88/Luna.zl-Agent/pull/2). Không merge từ các phase này. Không đưa token vào source hay `.env.example`.
+Nhánh kiểm quyết định chủ repo là `phase-12-owner-decisions`. License là MIT. Copyright trong `LICENSE` dùng login GitHub `Anhtran88` vì profile không có tên pháp lý; chủ repo có thể thay bằng tên muốn hiển thị. Không đưa token vào source hay `.env.example`.
 
 ## Preview HTTP 500
 

@@ -10,6 +10,7 @@ import {
   LunaError,
   randomIds,
   systemClock,
+  sequenceIds,
   LUNA_PHASE,
   LUNA_RELEASE,
   type AgentRun,
@@ -25,10 +26,23 @@ import {
   type ModuleStatus,
   type StepResult,
 } from "./domain.ts";
+import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
+import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
+import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
+import {
+  assessProduction,
+  summarizeProduction,
+  type ProductionSummary,
+} from "./production-gate.ts";
+import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
+import { evaluateGovernance, summarizeGovernance, type GovernanceSummary } from "./policy.ts";
+import { assessOperations, summarizeOperations, type OperationsSummary } from "./operations.ts";
+import { OWNER_ROLE_NAMES, ownerDecisionOwners } from "./owner-decisions.ts";
+import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.ts";
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
-import { SCHEMA_VERSION } from "./schema.ts";
+import { SCHEMA_VERSION, parseTaskRecord, parseApprovalRecord, parseAuditRecord, parseRunRecord, wrapRecord } from "./schema.ts";
 import { MemoryLunaStore, type LunaStore } from "./store.ts";
 
 export interface ControlPlaneDeps {
@@ -40,9 +54,25 @@ export interface ControlPlaneDeps {
   firebaseConfig: FirebasePublicConfig;
   modelConfig: NineRouterPublicConfig;
   store: LunaStore;
+  deployment: DeployPosture;
+  readiness: ReadinessSummary;
+  staging: StagingSummary;
+  production: ProductionSummary;
+  validation: ValidationSummary;
+  governance: GovernanceSummary;
+  operations: OperationsSummary;
 }
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
+
+export interface PlaneCheckpoint {
+  version: 1;
+  tasks: AgentTask[];
+  approvals: ApprovalRequest[];
+  audits: AuditEvent[];
+  runs: AgentRun[];
+  recoveryRequired: string[];
+}
 
 export class LunaControlPlane {
   private readonly tasks = new Map<string, AgentTask>();
@@ -50,9 +80,60 @@ export class LunaControlPlane {
   private readonly audits: AuditEvent[] = [];
   private readonly runs: AgentRun[] = [];
   private readonly deps: ControlPlaneDeps;
+  private readonly mutations = new Set<string>();
+  private readonly recoveryRequired = new Set<string>();
 
   constructor(deps: ControlPlaneDeps) {
     this.deps = deps;
+  }
+
+  exportCheckpoint(): PlaneCheckpoint {
+    if (this.mutations.size) throw new LunaError("BUSY", "Không checkpoint khi mutation đang chạy.");
+    return structuredClone({ version: 1, tasks: [...this.tasks.values()], approvals: [...this.approvals.values()], audits: this.audits, runs: this.runs, recoveryRequired: [...this.recoveryRequired] });
+  }
+
+  static restoreCheckpoint(value: unknown): LunaControlPlane {
+    const state = value as PlaneCheckpoint;
+    if (!state || state.version !== 1 || ![state.tasks, state.approvals, state.audits, state.runs, state.recoveryRequired].every(Array.isArray)) throw new LunaError("MIGRATION", "Checkpoint không tương thích.");
+    const plane = LunaControlPlane.createDefault({}); // All adapters are local/mock; never hydrate live config.
+    for (const raw of state.tasks) {
+      const task = parseTaskRecord(wrapRecord("task", structuredClone(raw)));
+      if (task.mode !== "dry-run" || plane.tasks.has(task.id)) throw new LunaError("VALIDATION", "Task checkpoint không hợp lệ.");
+      if (task.plan) {
+        const expected = createPlan(task.goal, { ids: sequenceIds(), clock: { now: () => task.createdAt } });
+        const contract = (steps: typeof expected.steps) => steps.map(step => step && ({ kind: step.kind, sensitivity: step.sensitivity, requiresApproval: step.requiresApproval }));
+        if (!Array.isArray(task.plan.steps) || JSON.stringify(contract(task.plan.steps)) !== JSON.stringify(contract(expected.steps))) throw new LunaError("VALIDATION", "Checkpoint plan không khớp policy hiện tại.");
+      }
+      plane.tasks.set(task.id, task);
+    }
+    for (const raw of state.approvals) {
+      const approval = parseApprovalRecord(wrapRecord("approval", structuredClone(raw)));
+      if (!plane.tasks.has(approval.taskId) || plane.approvals.has(approval.id)) throw new LunaError("VALIDATION", "Approval checkpoint không hợp lệ.");
+      plane.approvals.set(approval.id, approval);
+    }
+    for (const task of plane.tasks.values()) {
+      if (task.approvalId && plane.approvals.get(task.approvalId)?.taskId !== task.id) throw new LunaError("VALIDATION", "Checkpoint mất liên kết approval.");
+      const approval = task.approvalId ? plane.approvals.get(task.approvalId) : undefined;
+      if ((task.status === "awaiting_approval" && approval?.status !== "pending") ||
+          (task.status === "approved" && approval?.status !== "approved") ||
+          (task.status === "rejected" && approval?.status !== "rejected") ||
+          (["planned", "awaiting_approval", "approved", "dry_run_completed"].includes(task.status) && !task.plan)) throw new LunaError("VALIDATION", "Checkpoint state/approval không khớp.");
+    }
+    for (const raw of state.audits) {
+      const event = parseAuditRecord(wrapRecord("audit", structuredClone(raw)));
+      if (event.taskId && !plane.tasks.has(event.taskId)) throw new LunaError("VALIDATION", "Checkpoint mất task audit.");
+      plane.audits.push(event);
+    }
+    for (const raw of state.runs) {
+      const run = parseRunRecord(wrapRecord("run", structuredClone(raw)));
+      if (!plane.tasks.has(run.taskId)) throw new LunaError("VALIDATION", "Checkpoint mất task run.");
+      plane.runs.push(run);
+    }
+    for (const id of state.recoveryRequired) {
+      if (!plane.tasks.has(id)) throw new LunaError("VALIDATION", "Recovery checkpoint không hợp lệ.");
+      plane.recoveryRequired.add(id);
+    }
+    return plane;
   }
 
   static createDefault(
@@ -72,10 +153,27 @@ export class LunaControlPlane {
       firebaseConfig,
       modelConfig,
       store: partial?.store ?? new MemoryLunaStore(),
+      deployment: partial?.deployment ?? describeDeployPosture(env),
+      readiness: partial?.readiness ?? summarizeReadiness(assessReadiness({ env })),
+      staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
+      production: partial?.production ?? summarizeProduction(assessProduction({ env })),
+      validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
+      governance:
+        partial?.governance ??
+        summarizeGovernance(evaluateGovernance({ env, owners: ownerDecisionOwners() })),
+      operations:
+        partial?.operations ??
+        summarizeOperations(
+          assessOperations({ env, owners: ownerDecisionOwners(), roleNames: OWNER_ROLE_NAMES }),
+        ),
     });
   }
 
-  async createTask(input: { title?: string; goal: string; mode?: ExecutionMode }): Promise<AgentTask> {
+  async createTask(input: {
+    title?: string;
+    goal: string;
+    mode?: ExecutionMode;
+  }): Promise<AgentTask> {
     const goal = input.goal.trim();
     const title = (input.title?.trim() || goal.slice(0, 72)).trim();
     if (goal.length < 3 || goal.length > 2000) {
@@ -83,6 +181,9 @@ export class LunaControlPlane {
     }
     if (title.length < 1 || title.length > 120) {
       throw new LunaError("VALIDATION", "Tiêu đề cần từ 1 đến 120 ký tự.");
+    }
+    if (containsSecret(goal) || containsSecret(title)) {
+      throw new LunaError("VALIDATION", "Nội dung không được chứa credential.");
     }
     const mode = input.mode ?? "dry-run";
     if (mode !== "dry-run" && mode !== "live") {
@@ -111,10 +212,57 @@ export class LunaControlPlane {
           ? "Đã ghi nhận yêu cầu live. Thực thi sẽ bị phase lock từ chối."
           : "Đã tạo tác vụ ở chế độ dry-run.",
     });
-    return task;
+    return structuredClone(task);
   }
 
   async planTask(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.planTaskOnce(taskId));
+  }
+
+  async decideApproval(
+    approvalId: string,
+    decision: "approved" | "rejected",
+    note?: string,
+  ): Promise<ApprovalRequest> {
+    const approval = this.approvals.get(approvalId);
+    if (!approval) throw new LunaError("NOT_FOUND", "Không thấy yêu cầu duyệt.");
+    return this.mutate(approval.taskId, () => this.decideApprovalOnce(approvalId, decision, note));
+  }
+
+  async execute(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.executeOnce(taskId));
+  }
+
+  async cancel(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.cancelOnce(taskId));
+  }
+
+  private async mutate<T>(taskId: string, work: () => Promise<T>): Promise<T> {
+    if (this.recoveryRequired.has(taskId))
+      throw new LunaError(
+        "RECOVERY_REQUIRED",
+        "Trạng thái ghi chưa chắc chắn. Cần đối chiếu thủ công, không tự retry.",
+      );
+    if (this.mutations.has(taskId))
+      throw new LunaError("BUSY", "Tác vụ đang được xử lý. Đọc lại trạng thái trước khi thử lại.");
+    this.mutations.add(taskId);
+    const before = JSON.stringify(this.tasks.get(taskId));
+    try {
+      return structuredClone(await work());
+    } catch (error) {
+      const task = this.tasks.get(taskId);
+      if (task && (!(error instanceof LunaError) || before !== JSON.stringify(task))) {
+        // Persistence has no transaction/CAS. Never retry an ambiguously committed mutation.
+        task.status = "blocked";
+        this.recoveryRequired.add(taskId);
+      }
+      throw error;
+    } finally {
+      this.mutations.delete(taskId);
+    }
+  }
+
+  private async planTaskOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (task.status !== "draft") {
       throw new LunaError("BAD_STATUS", "Chỉ lập kế hoạch từ trạng thái nháp.");
@@ -156,7 +304,7 @@ export class LunaControlPlane {
     return task;
   }
 
-  async decideApproval(
+  private async decideApprovalOnce(
     approvalId: string,
     decision: "approved" | "rejected",
     note?: string,
@@ -172,7 +320,7 @@ export class LunaControlPlane {
     }
     approval.status = decision;
     approval.decidedAt = this.deps.clock.now();
-    approval.note = note?.trim().slice(0, 280) || undefined;
+    approval.note = note ? redactAuditDetail(note).slice(0, 280) || undefined : undefined;
     task.status = decision === "approved" ? "approved" : "rejected";
     await this.record({
       actor: "operator",
@@ -186,12 +334,15 @@ export class LunaControlPlane {
     return approval;
   }
 
-  async execute(taskId: string): Promise<AgentTask> {
+  private async executeOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     const startedAt = this.deps.clock.now();
     const approval = task.approvalId ? this.approvals.get(task.approvalId) : undefined;
     const gate = decideExecution({ task, approval });
     if (!gate.ok) {
+      if (gate.code === "TERMINAL" || gate.code === "BAD_STATUS") {
+        throw new LunaError(gate.code, gate.message);
+      }
       if (gate.code === "PHASE_LOCK") task.status = "blocked";
       await this.record({
         actor: "system",
@@ -239,7 +390,7 @@ export class LunaControlPlane {
     return task;
   }
 
-  async cancel(taskId: string): Promise<AgentTask> {
+  private async cancelOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (
       task.status === "dry_run_completed" ||
@@ -263,14 +414,23 @@ export class LunaControlPlane {
 
   snapshot(): ControlPlaneSnapshot {
     const { firebaseConfig, modelConfig, firebase, store } = this.deps;
-    return {
+    return structuredClone<ControlPlaneSnapshot>({
       phase: LUNA_PHASE,
       release: LUNA_RELEASE,
       phaseLock: true,
       schemaVersion: SCHEMA_VERSION,
       storeMode: store.mode,
       generatedAt: this.deps.clock.now(),
-      modules: moduleCatalog(firebase.mode),
+      modules: moduleCatalog(
+        firebase.mode,
+        this.deps.deployment,
+        this.deps.readiness,
+        this.deps.staging,
+        this.deps.production,
+        this.deps.validation,
+        this.deps.governance,
+        this.deps.operations,
+      ),
       tasks: [...this.tasks.values()].reverse(),
       approvals: [...this.approvals.values()].reverse(),
       runs: [...this.runs].reverse().slice(0, 20),
@@ -301,7 +461,15 @@ export class LunaControlPlane {
           stubs: ["playwright", "skyvern", "browser-use"],
         },
       },
-    };
+      deployment: this.deps.deployment,
+      security: SECURITY_POSTURE,
+      readiness: this.deps.readiness,
+      staging: this.deps.staging,
+      production: this.deps.production,
+      validation: this.deps.validation,
+      governance: this.deps.governance,
+      operations: this.deps.operations,
+    });
   }
 
   private require(taskId: string): AgentTask {
@@ -322,6 +490,7 @@ export class LunaControlPlane {
       at: this.deps.clock.now(),
       dryRun: true,
       ...input,
+      detail: redactAuditDetail(input.detail),
     };
     this.audits.push(event);
     await this.deps.store.appendAudit(event);
@@ -347,13 +516,22 @@ export class LunaControlPlane {
   }
 }
 
-function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): ModuleStatus[] {
+function moduleCatalog(
+  firebaseMode: "memory" | "disabled-live" | "rest",
+  deployment: DeployPosture,
+  readiness: ReadinessSummary,
+  staging: StagingSummary,
+  production: ProductionSummary,
+  validation: ValidationSummary,
+  governance: GovernanceSummary,
+  operations: OperationsSummary,
+): ModuleStatus[] {
   return [
     {
       id: "web",
       name: "Luna Web",
       state: "ready",
-      detail: "Bảng điều khiển Phase 3. Không giữ secret và không có nút tắt khóa.",
+      detail: "Bảng điều khiển Phase 12. Compliance local vẫn NO-GO.",
     },
     {
       id: "agent",
@@ -387,6 +565,56 @@ function moduleCatalog(firebaseMode: "memory" | "disabled-live" | "rest"): Modul
       name: "Approval & Audit",
       state: "ready",
       detail: "Bước nhạy cảm cần duyệt, dry-run và nhật ký. phaseLock không ghi tắt được.",
+    },
+    {
+      id: "deploy",
+      name: "Deployment",
+      state: deployment.blocked ? "locked" : "ready",
+      detail: deployment.blocked
+        ? `${deployment.target} bị chặn. Không publish, không rules, không mạng production.`
+        : `${deployment.target} dry-run. Chưa production và không gọi mạng ngoài.`,
+    },
+    {
+      id: "security",
+      name: "Security",
+      state: "locked",
+      detail: "Rules deny-all, header an toàn, rate-limit local. Live và production vẫn khóa.",
+    },
+    {
+      id: "readiness",
+      name: "Readiness",
+      state: "locked",
+      detail: `NO-GO. Điểm kỹ thuật ${readiness.technicalScore}. Còn ${readiness.ownerMissing} điều kiện chủ repo.`,
+    },
+    {
+      id: "staging",
+      name: "Staging",
+      state: "locked",
+      detail: `${staging.decision}. ${staging.blockers} điều kiện còn mở. Không gọi mạng.`,
+    },
+    {
+      id: "production",
+      name: "Production gate",
+      state: "locked",
+      detail: `NO-GO. Sign-off ${production.signOffComplete ? "đủ trên giấy" : "chưa đủ"}. Không cấp quyền deploy.`,
+    },
+    {
+      id: "validation",
+      name: "Validation",
+      state: "mock",
+      detail: `${validation.scope}. ${validation.scenarios} kịch bản local. Không phải production validation.`,
+    },
+    {
+      id: "policy",
+      name: "Governance",
+      state: "locked",
+      detail: `NO-GO. ${governance.blockers} điều kiện policy còn mở. Cờ xác nhận không được chấp nhận.`,
+    },
+    {
+      id: "operations",
+      name: "Operations",
+      state: "locked",
+      detail: `NO-GO. Evidence ${operations.evidenceScore}/100. ${operations.rolesBlocked} vai BLOCKED.`,
     },
   ];
 }

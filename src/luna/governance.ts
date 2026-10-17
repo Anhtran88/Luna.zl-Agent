@@ -24,6 +24,7 @@ export function decideExecution(input: {
 
   if (
     task.status === "cancelled" ||
+    task.status === "blocked" ||
     task.status === "rejected" ||
     task.status === "dry_run_completed"
   ) {

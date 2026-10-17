@@ -1,0 +1,16 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "separationOfDuties": "BLOCKED",
+  "ownerCollision": true,
+  "note": "Chủ repo gán mọi vai cho kenbi. Collision giữ BLOCKED. Không suy diễn handle khác. Không ghi secret, token, cookie, private key, credential hay URL.",
+  "roles": [
+    { "id": "requester", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "approver", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "staging-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "credential-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "security-reviewer", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "rollback-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "incident-owner", "assignee": "kenbi", "status": "BLOCKED" }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "separationOfDuties": "BLOCKED",
+  "ownerCollision": true,
+  "note": "Chủ repo ghi cùng một handle cho mọi vai. Đây là collision, không phải bảy vai độc lập. Không có secret, token, cookie, private key, credential hay URL.",
+  "roles": [
+    { "id": "requester", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "approver", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "staging-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "credential-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "security-reviewer", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "rollback-owner", "assignee": "kenbi", "status": "BLOCKED" },
+    { "id": "incident-owner", "assignee": "kenbi", "status": "BLOCKED" }
+  ],
+  "license": {
+    "spdx": "MIT",
+    "copyrightHolder": "Anhtran88",
+    "legalName": null,
+    "note": "GitHub login của chủ repo. Profile không có tên pháp lý. Giữ Anhtran88 cho tới khi chủ repo thay."
+  },
+  "budget": {
+    "status": "caps-recorded",
+    "currency": "USD",
+    "chargedUsd": 0,
+    "note": "Cap là mức tối đa mỗi tháng, không phải quyền chi và không phải cờ xác nhận. Vượt cap thì từ chối. Lần ghi này không phát sinh phí.",
+    "caps": [
+      { "service": "firebase", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
+      { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
+    ]
+  },
+  "staging": {
+    "name": "luna-staging",
+    "status": "owner-reported-present",
+    "verified": false,
+    "environment": null,
+    "independentStagingOwner": false,
+    "probed": false,
+    "deployed": false,
+    "note": "Tên logic là luna-staging. Chủ repo báo staging đã có nhưng chưa verified. Không lưu URL hay credential. Không probe và không deploy."
+  },
+  "browserPolicy": {
+    "realAutomation": "staging-only",
+    "production": "forbidden",
+    "launch": false,
+    "monthlyCapUsd": 1,
+    "heldUntil": ["staging-verified", "browser-evidence-valid", "owner-collision-resolved", "approval-gates-passed"],
+    "adapters": ["mock", "playwright-stub", "skyvern-stub", "browser-use-stub"]
+  },
+  "zaloEofficePolicy": {
+    "authorization": "simulated-readonly",
+    "zalo": { "mode": "read-only", "audience": "designated-bi-groups", "send": "forbidden" },
+    "eoffice": { "form": "BM03.2", "mode": "read-compare", "edit": "forbidden", "submit": "forbidden" },
+    "attachments": {
+      "download": "simulated-only",
+      "merge": "one-pdf-per-delivery-note",
+      "namingRule": "P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf",
+      "duplicateSuffix": "_02",
+      "formCode": "BM03.2",
+      "folderLabels": ["year", "month", "material"],
+      "projectAliases": ["SUN", "HOL", "GRC"],
+      "storageRoot": "unset",
+      "storagePath": null,
+      "stored": false
+    },
+    "extract": ["deliveryDate", "project", "materials", "lineItems", "quantity"],
+    "unclear": "stop-and-ask-bi-or-luna",
+    "ticketEdit": { "actor": "nv-trinh-phieu", "after": "bi-approval", "executed": false },
+    "executed": false,
+    "login": false,
+    "note": "Chỉ policy và mô phỏng. Không login, không gửi Zalo, không sửa hoặc submit eOffice. Tên PDF là P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf; trùng thì _02, _03. Có thể kèm BM03.2. Một PDF mỗi phiếu. Mã dự án chỉ SUN, HOL, GRC. Storage root bên ngoài repo, mặc định unset. Không ghi file và không lưu đường dẫn."
+  }
+}

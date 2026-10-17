@@ -1,0 +1,10 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "note": "Mẫu trống. Điền ngoài repository. Không commit bản đã điền. Không ghi secret, token, cookie, private key, credential hay URL. Cờ xác nhận không phải sign-off. Decision giữ NO-GO.",
+  "records": [
+    { "field": "artifact", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "artifact", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "migration", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "migration", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "backup", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "backup", "approval_reference": null, "status": "BLOCKED" }
+  ]
+}

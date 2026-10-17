@@ -2,7 +2,7 @@
 
 export const LUNA_PHASE = "2-foundations" as const;
 /** Visible release. Stored schema phase stays v1-compatible. */
-export const LUNA_RELEASE = "3-controlled" as const;
+export const LUNA_RELEASE = "12-operations" as const;
 
 export class LunaError extends Error {
   readonly code: string;
@@ -116,6 +116,10 @@ export interface AuditEvent {
   detail: string;
   /** Every persisted event is a dry-run. Nothing external ran. */
   dryRun: true;
+  /** Server-verified provenance, populated by the transactional command service. */
+  principal?: string;
+  workspaceId?: string;
+  requestId?: string;
 }
 
 export interface Clock {
@@ -138,7 +142,7 @@ export interface ControlPlaneSnapshot {
   release: typeof LUNA_RELEASE;
   phaseLock: true;
   schemaVersion: 1;
-  storeMode: "memory" | "firebase";
+  storeMode: "memory" | "firebase" | "postgres";
   generatedAt: string;
   modules: ModuleStatus[];
   tasks: AgentTask[];
@@ -171,11 +175,82 @@ export interface ControlPlaneSnapshot {
       stubs: Array<"playwright" | "skyvern" | "browser-use">;
     };
   };
+  deployment: {
+    target: "local" | "staging" | "production";
+    mode: "dry-run";
+    productionDeployed: false;
+    network: false;
+    blocked: boolean;
+  };
+  security: {
+    phaseLock: true;
+    firebaseRules: "deny-all";
+    rateLimit: "local";
+    liveEnabled: false;
+    productionDeploy: false;
+  };
+  readiness: {
+    decision: "NO-GO";
+    technicalScore: number;
+    ownerMissing: number;
+    network: false;
+    productionDeployed: false;
+  };
+  staging: {
+    decision: "NO-GO" | "LOCAL-REHEARSAL-ONLY";
+    networkDeploy: false;
+    productionDeployed: false;
+    blockers: number;
+  };
+  production: {
+    decision: "NO-GO";
+    signOffComplete: boolean;
+    networkDeploy: false;
+    productionDeployed: false;
+    blockers: number;
+  };
+  validation: {
+    scope: "simulated" | "refused";
+    productionValidated: false;
+    productionDeployed: false;
+    networkCalls: 0;
+    scenarios: number;
+  };
+  governance: {
+    decision: "NO-GO";
+    authorization: "not-granted";
+    fakeSignOffAccepted: false;
+    networkCalls: 0;
+    blockers: number;
+  };
+  operations: {
+    decision: "NO-GO";
+    authorization: "not-granted";
+    evidenceScore: number;
+    goEligible: false;
+    networkCalls: 0;
+    blockers: number;
+    rolesBlocked: number;
+    ownerCollision: boolean;
+  };
 }
 
 export type CommandResult<T> =
-  | { ok: true; data: T; snapshot: ControlPlaneSnapshot }
-  | { ok: false; code: string; message: string; snapshot: ControlPlaneSnapshot };
+  | {
+      ok: true;
+      data: T;
+      snapshot: ControlPlaneSnapshot;
+      acknowledged?: boolean;
+      requestId?: string;
+    }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      snapshot: ControlPlaneSnapshot;
+      acknowledged?: boolean;
+      requestId?: string;
+    };
 
 export function systemClock(): Clock {
   return { now: () => new Date().toISOString() };

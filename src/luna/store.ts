@@ -39,35 +39,38 @@ export class MemoryLunaStore implements LunaStore {
 
   async ensureSettings(now: string): Promise<SettingsBody> {
     if (!this.settings) this.settings = defaultSettings(now).record;
-    return this.settings;
+    return structuredClone(this.settings);
   }
 
   async saveTask(task: AgentTask): Promise<void> {
-    this.tasks.set(task.id, parseTaskRecord(wrapRecord("task", task)));
+    this.tasks.set(task.id, parseTaskRecord(wrapRecord("task", structuredClone(task))));
   }
 
   async saveApproval(approval: ApprovalRequest): Promise<void> {
-    this.approvals.set(approval.id, parseApprovalRecord(wrapRecord("approval", approval)));
+    this.approvals.set(
+      approval.id,
+      parseApprovalRecord(wrapRecord("approval", structuredClone(approval))),
+    );
   }
 
   async appendAudit(event: AuditEvent): Promise<void> {
-    this.audits.push(parseAuditRecord(wrapRecord("audit", event)));
+    this.audits.push(parseAuditRecord(wrapRecord("audit", structuredClone(event))));
   }
 
   async saveRun(run: AgentRun): Promise<void> {
-    this.runs.set(run.id, parseRunRecord(wrapRecord("run", run)));
+    this.runs.set(run.id, parseRunRecord(wrapRecord("run", structuredClone(run))));
   }
 
   async readTask(id: string): Promise<AgentTask | null> {
-    return this.tasks.get(id) ?? null;
+    return structuredClone(this.tasks.get(id) ?? null);
   }
 
   async readSettings(): Promise<SettingsBody | null> {
-    return this.settings;
+    return structuredClone(this.settings);
   }
 
   async readRun(id: string): Promise<AgentRun | null> {
-    return this.runs.get(id) ?? null;
+    return structuredClone(this.runs.get(id) ?? null);
   }
 }
 

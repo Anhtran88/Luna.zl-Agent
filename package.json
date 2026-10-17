@@ -1,6 +1,7 @@
 {
   "name": "app-builder-workspace",
   "private": true,
+  "license": "MIT",
   "sideEffects": false,
   "type": "module",
   "overrides": {
@@ -17,8 +18,19 @@
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts 'src/luna/**/*.test.ts'",
+    "test:upstream": "LUNA_REQUIRE_OG_SKILL=1 node --test scripts/brand-check.test.mjs scripts/write-atomic.test.mjs",
+    "test:e2e": "node scripts/luna-e2e.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:dry-run": "node --experimental-strip-types src/luna/deploy-cli.ts",
+    "security:check": "node --experimental-strip-types src/luna/security-cli.ts",
+    "readiness": "node --experimental-strip-types src/luna/readiness-cli.ts",
+    "staging:check": "node --experimental-strip-types src/luna/staging-cli.ts",
+    "production:check": "node --experimental-strip-types src/luna/production-cli.ts",
+    "validate:sim": "node --experimental-strip-types src/luna/validation-cli.ts",
+    "governance:check": "node --experimental-strip-types src/luna/governance-cli.ts",
+    "ops:check": "node --experimental-strip-types src/luna/operations-cli.ts",
+    "trusted:preflight": "node scripts/trusted-preflight.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
@@ -84,6 +96,7 @@
     "@types/pg": "^8.11.10",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "agent-browser": "0.16.0",
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

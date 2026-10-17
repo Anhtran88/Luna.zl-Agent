@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { promisify } from "node:util";
 import {
   APP_ENV_REL_PATH,
+  DEFAULT_APP_ENV_REL_PATH,
   mergeAppEnv,
   parseAppEnv,
   projectRoot,
@@ -43,6 +44,16 @@ test("drops non-VITE keys, non-string values and malformed documents", () => {
 
 test("a missing app-env.json is a clean no-op", () => {
   assert.deepEqual(readAppEnv(makeWorkspace()), {});
+});
+
+test("tracked defaults work without platform injection and local VITE overrides win", () => {
+  const root = makeWorkspace();
+  mkdirSync(join(root, "config"));
+  writeFileSync(join(root, DEFAULT_APP_ENV_REL_PATH), '{"VITE_AUTH_ENABLED":"false","VITE_LABEL":"local","NOT_PUBLIC":"discard"}');
+  assert.deepEqual(readAppEnv(root), { VITE_AUTH_ENABLED: "false", VITE_LABEL: "local" });
+  mkdirSync(join(root, ".grok"));
+  writeFileSync(join(root, APP_ENV_REL_PATH), '{"VITE_AUTH_ENABLED":"true"}');
+  assert.deepEqual(readAppEnv(root), { VITE_AUTH_ENABLED: "true", VITE_LABEL: "local" });
 });
 
 test("reads the app env from a workspace", () => {

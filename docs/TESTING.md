@@ -1,0 +1,56 @@
+# Kiểm thử độc lập với nền tảng
+
+`npm ci` rồi `npm test` là đường kiểm tra chuẩn. CI chạy cùng lệnh, tiếp theo build/typecheck/lint/security và UI E2E local. Không cần `.grok` hoặc credential. `config/app-env.json` tracked cung cấp mặc định public auth-off; config local rồi process env có thể override. Auth staging chưa được hoàn tất.
+
+Dùng Node 22. Lockfile được kiểm bằng cả npm 10.9.9 (runner Node 22) và npm 11.9.0; dependency peer/optional `nitro/node_modules/lru-cache` phải được ghi đủ để npm 10 không từ chối `npm ci`.
+
+Trên checkout sạch, chạy `npm run build` trước `npm run typecheck` như CI: TanStack tạo `src/routeTree.gen.ts` trong build/dev và file này không tracked. Typecheck trước bước sinh route tree sẽ báo thiếu module.
+
+## Vì sao có bốn upstream contracts tùy chọn
+
+`.grok/skills/og` thuộc bộ prompt/skill do nền tảng cung cấp, bị git-ignore và không được import để Luna chạy. Hai file sau trước đây đọc nó vô điều kiện:
+
+| Test | File | Hành vi khi upstream vắng mặt |
+| --- | --- | --- |
+| upstream SKILL.md names the marker path and bound | `scripts/brand-check.test.mjs` | SKIP |
+| upstream skill never affirms a brand-task wait | `scripts/brand-check.test.mjs` | SKIP |
+| SKILL.md tells the pass to self-check with the flag this CLI accepts | `scripts/brand-check.test.mjs` | SKIP |
+| every hand-over the og skill prints is one this script accepts | `scripts/write-atomic.test.mjs` | SKIP |
+
+Kiểm tra marker, thời hạn và quy tắc không chờ trong `AGENTS.md` tracked vẫn chạy riêng. Mọi test chức năng của CLI, atomic writes, brand checks và app vẫn chạy. Regression tests chứng minh:
+
+- Chỉ thư mục upstream hoàn toàn vắng và không được yêu cầu mới được skip.
+- Thư mục chỉ có một phần hoặc đường dẫn được chỉ định nhưng thiếu phải fail; không tự skip.
+- Child runner thực chạy các assertion và trả nonzero; tracked docs vẫn được kiểm.
+- Không tạo `SKILL.md` giả hay thay assertion bằng kết quả cố định.
+
+Với nguồn upstream thật:
+
+```bash
+LUNA_OG_SKILL_DIR=/path/to/upstream/og npm run test:upstream
+```
+
+`LUNA_REQUIRE_OG_SKILL=1` cũng buộc full suite kiểm nguồn mặc định. Chưa có nguồn thì bốn contract này fail ENOENT; đó là kết quả đúng của chế độ strict. Không gọi bốn SKIP là PASS. Số test mới được runner in ra; không dùng số cũ của PR làm bằng chứng.
+
+## UI E2E
+
+`agent-browser` được pin qua lockfile cho Node 22. Cần Chromium/Chrome có sẵn hoặc `AGENT_BROWSER_EXECUTABLE_PATH`. Khởi động lại dev server sau khi đổi dependencies.
+
+```bash
+npm run dev
+# Trong terminal khác:
+npm run test:e2e
+
+# Sau build, kiểm riêng output đã build:
+npm run build
+npm run preview:restart
+LUNA_E2E_URL=http://127.0.0.1:8081/ npm run test:e2e
+```
+
+Runner chỉ nhận `127.0.0.1:8080` hoặc `:8081`, không credential/query/path khác. Session, config và sockets riêng; không dùng profile hay saved auth của người dùng. Domain allowlist chặn resource ngoài loopback. Chrome chỉ lái UI local; browser adapter của Luna vẫn launch off.
+
+Desktop/mobile đều kiểm approve/reject/execute bị từ chối khi auth chưa sẵn sàng, sau đó cancel và reload: sáu kịch bản cho dev, sáu cho built. Không bật quyền fixture để chạy happy flow qua HTTP; core simulation kiểm happy flow riêng. Trạng thái task và audit ID phải khớp; deny không đổi task hoặc tạo success audit; sau terminal bị disabled; reload giữ state trong cùng server process. Page errors, overflow hoặc thiếu audit làm runner fail. Failure cũng ghi verdict mới và snapshot/screenshot chẩn đoán; không dùng verdict cũ để báo pass. Artifacts synthetic ở thư mục screenshots ignored.
+
+Form chỉ nhận thao tác sau khi React hydrate xong để nội dung nhập sớm không bị reset thành preset. Task đã hủy không còn hiện nút duyệt; backend từ chối cả approve/reject cho yêu cầu cũ và regression test kiểm chứng điều này.
+
+Xem [trusted runtime](TRUSTED_RUNTIME.md) cho session mocks (chỉ trong tests), signed-policy fixtures, SQL atomic/replay/isolation, disk reopen và actual SIGKILL tests. [Local contract](LOCAL_AUTH_STATE_CONTRACT.md) mô tả demo memory. PGLite là PostgreSQL engine local; two service instances không thay thế load test bằng các network PG connections độc lập. Đây chưa phải sign-in account thật hoặc staging/live validation. E2E cũng kiểm auth API mặc định disabled và trang login disabled; không gọi provider thật. Tất cả vẫn NO-GO.

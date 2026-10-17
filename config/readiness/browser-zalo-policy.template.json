@@ -1,0 +1,36 @@
+{
+  "decision": "NO-GO",
+  "authorization": "not-granted",
+  "note": "Browser chỉ được xét trong staging và launch vẫn tắt. Production browser bị cấm. Zalo chỉ đọc ở nhóm Bi chỉ định, không gửi. eOffice BM03.2 chỉ đọc hoặc đối chiếu. PDF ghép dùng P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf; trùng thì _02, _03. Storage root bên ngoài repo và đang unset. Evidence vẫn BLOCKED. Không lưu đường dẫn và không ghi file.",
+  "browserPolicy": {
+    "realAutomation": "staging-only",
+    "production": "forbidden",
+    "launch": false,
+    "monthlyCapUsd": 1
+  },
+  "zaloEofficePolicy": {
+    "authorization": "simulated-readonly",
+    "zalo": { "mode": "read-only", "audience": "designated-bi-groups", "send": "forbidden" },
+    "eoffice": { "form": "BM03.2", "mode": "read-compare", "edit": "forbidden", "submit": "forbidden" },
+    "attachments": {
+      "merge": "one-pdf-per-delivery-note",
+      "namingRule": "P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf",
+      "duplicateSuffix": "_02",
+      "formCode": "BM03.2",
+      "folderLabels": ["year", "month", "material"],
+      "projectAliases": ["SUN", "HOL", "GRC"],
+      "storageRoot": "unset",
+      "storagePath": null,
+      "stored": false
+    },
+    "extract": ["deliveryDate", "project", "materials", "lineItems", "quantity"],
+    "unclear": "stop-and-ask-bi-or-luna",
+    "ticketEdit": { "actor": "nv-trinh-phieu", "after": "bi-approval" },
+    "executed": false,
+    "login": false
+  },
+  "records": [
+    { "field": "browser-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "browser", "approval_reference": null, "status": "BLOCKED" },
+    { "field": "zalo-eoffice-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "zalo-eoffice", "approval_reference": null, "status": "BLOCKED" }
+  ]
+}

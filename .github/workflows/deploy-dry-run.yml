@@ -1,0 +1,38 @@
+name: controlled-deploy-dry-run
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run security:check
+      - run: npm run governance:check
+      - run: npm run ops:check
+      - run: npm run readiness
+      - run: npm run deploy:dry-run
+      - name: Local UI E2E on dev
+        run: |
+          npm run dev > /tmp/luna-e2e-dev.log 2>&1 &
+          luna_e2e_server_pid=$!
+          trap 'kill "$luna_e2e_server_pid" 2>/dev/null || true' EXIT
+          npm run test:e2e
+      - name: Local UI E2E on built output
+        run: |
+          npm run preview:restart
+          LUNA_E2E_URL=http://127.0.0.1:8081/ npm run test:e2e

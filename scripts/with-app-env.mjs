@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Run a command with `.grok/app-env.json` merged into its environment.
+ * Run a command with tracked public defaults, then `.grok/app-env.json` overrides.
  *
  * `dev`, `build` and `preview` all route through this wrapper, so the dev
  * server, the built bundle and the preview server can never disagree about
@@ -26,13 +26,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const APP_ENV_REL_PATH = ".grok/app-env.json";
+export const DEFAULT_APP_ENV_REL_PATH = "config/app-env.json";
 
 const VITE_PREFIX = "VITE_";
 
 /**
  * Parse an app-env document, keeping only `VITE_`-prefixed string entries.
- * Anything unparseable is an empty environment — a workspace without the file
- * must behave exactly like today (auth on, no overrides).
+ * Anything unparseable contributes no overrides. Tracked defaults are loaded
+ * separately, so a clean Luna checkout does not need platform-injected files.
  */
 export function parseAppEnv(text) {
   let parsed;
@@ -53,11 +54,15 @@ export function parseAppEnv(text) {
 
 /** The app env recorded under `root`, or `{}` when the file is absent. */
 export function readAppEnv(root) {
-  try {
-    return parseAppEnv(readFileSync(join(root, APP_ENV_REL_PATH), "utf8"));
-  } catch {
-    return {};
+  let env = {};
+  for (const relative of [DEFAULT_APP_ENV_REL_PATH, APP_ENV_REL_PATH]) {
+    try {
+      env = { ...env, ...parseAppEnv(readFileSync(join(root, relative), "utf8")) };
+    } catch {
+      // A standalone workspace may omit either public configuration file.
+    }
   }
+  return env;
 }
 
 /** File values under the process environment: an explicit override wins. */

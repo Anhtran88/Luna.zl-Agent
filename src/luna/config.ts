@@ -7,7 +7,7 @@ export interface FirebasePublicConfig {
   databaseUrlHost: string | null;
   /** Origin only. No userinfo, path, query, or credential. */
   databaseUrl: string | null;
-  credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON";
+  credentialEnvVar: "FIREBASE_SERVICE_ACCOUNT_JSON" | "STAGING_FIREBASE_SERVICE_ACCOUNT_JSON";
   credentialConfigured: boolean;
   liveRequested: boolean;
   /** Recorded only. The server factory never opens an emulator socket. */
@@ -32,6 +32,11 @@ export interface NineRouterPublicConfig {
 export const LUNAZL_FIREBASE_PROJECT_ID = "lunazl-agent";
 export const LUNAZL_FIREBASE_DATABASE_URL =
   "https://lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+export const STAGING_FIREBASE_PROJECT_ID = "lunazl-agent-staging-6dd7a";
+export const STAGING_FIREBASE_DATABASE_URL =
+  "https://lunazl-agent-staging-6dd7a-default-rtdb.asia-southeast1.firebasedatabase.app";
+export const STAGING_FIREBASE_REGION = "asia-southeast1";
 
 export const DEFAULT_NINE_ROUTER_BASE_URL = "http://127.0.0.1:20128/v1";
 
@@ -76,6 +81,29 @@ function assertPublicHttpUrl(raw: string, envName: string): URL {
 }
 
 export function loadFirebasePublicConfig(env: Env): FirebasePublicConfig {
+  const environment = blankToNull(env.LUNA_FIREBASE_ENVIRONMENT) ?? "local";
+  if (environment !== "local" && environment !== "staging") {
+    throw new LunaError("CONFIG", "LUNA_FIREBASE_ENVIRONMENT chỉ nhận local hoặc staging.");
+  }
+  if (environment === "staging") {
+    // No fallback to generic/production bindings, including credentials and flags.
+    if (
+      blankToNull(env.STAGING_FIREBASE_PROJECT_ID) !== STAGING_FIREBASE_PROJECT_ID ||
+      blankToNull(env.STAGING_FIREBASE_DATABASE_URL) !== STAGING_FIREBASE_DATABASE_URL
+    ) {
+      throw new LunaError("CONFIG", "Staging cần đúng project và RTDB origin riêng đã ghi nhận.");
+    }
+    return {
+      projectId: STAGING_FIREBASE_PROJECT_ID,
+      databaseUrl: STAGING_FIREBASE_DATABASE_URL,
+      databaseUrlHost: new URL(STAGING_FIREBASE_DATABASE_URL).host,
+      credentialEnvVar: "STAGING_FIREBASE_SERVICE_ACCOUNT_JSON",
+      credentialConfigured: hasSecret(env.STAGING_FIREBASE_SERVICE_ACCOUNT_JSON),
+      liveRequested: env.STAGING_FIREBASE_LIVE_ENABLED === "true",
+      emulatorRequested: false,
+      liveEnabled: false,
+    };
+  }
   const projectId = blankToNull(env.FIREBASE_PROJECT_ID);
   const databaseUrlRaw = blankToNull(env.FIREBASE_DATABASE_URL);
   const databaseUrl = databaseUrlRaw
