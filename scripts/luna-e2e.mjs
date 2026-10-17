@@ -38,12 +38,14 @@ const session = `luna-e2e-${randomUUID().slice(0, 8)}`;
 const execute = promisify(execFile);
 const cli = join(root, "node_modules", ".bin", "agent-browser");
 const checks = [];
+let lastCommand = "startup";
 const env = { ...process.env };
 for (const key of Object.keys(env)) if (key.startsWith("AGENT_BROWSER_")) delete env[key];
 env.AGENT_BROWSER_SOCKET_DIR = socketDir;
 const browserConfig = join(socketDir, "config.json");
 writeFileSync(browserConfig, "{}"); // No inherited profiles, saved auth, providers, or restore state.
 async function browser(...args) {
+  lastCommand = args.join(" ");
   const { stdout } = await execute(
     cli,
     ["--config", browserConfig, "--session", session, "--json", ...args],
@@ -185,6 +187,10 @@ try {
     ok: false,
     target: url.port === "8080" ? "dev" : "built",
     message: String(error.message),
+    command: lastCommand,
+    completedChecks: checks,
+    stdout: error.stdout,
+    stderr: error.stderr,
   };
   try {
     failure.snapshot = await browser("snapshot");
@@ -194,6 +200,14 @@ try {
     failure.captureError = String(captureError.message);
   }
   writeFileSync(join(artifacts, "verdict.json"), `${JSON.stringify(failure, null, 2)}\n`);
+  if (process.env.GITHUB_ACTIONS === "true") {
+    const diagnostic = JSON.stringify(failure)
+      .slice(0, 12000)
+      .replaceAll("%", "%25")
+      .replaceAll("\r", "%0D")
+      .replaceAll("\n", "%0A");
+    console.error(`::error title=Local UI E2E failure::${diagnostic}`);
+  }
   throw error;
 } finally {
   try {
