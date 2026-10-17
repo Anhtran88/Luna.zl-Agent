@@ -7,7 +7,7 @@ Repo đích: [Anhtran88/Luna.zl-agent](https://github.com/Anhtran88/Luna.zl-agen
 ## Chạy local
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -15,9 +15,9 @@ npm run dev
 
 ```bash
 npm test
+npm run build
 npm run lint
 npm run typecheck
-npm run build
 npm run deploy:dry-run
 npm run security:check
 npm run readiness

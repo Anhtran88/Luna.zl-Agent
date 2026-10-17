@@ -4,6 +4,8 @@
 
 Dùng Node 22. Lockfile được kiểm bằng cả npm 10.9.9 (runner Node 22) và npm 11.9.0; dependency peer/optional `nitro/node_modules/lru-cache` phải được ghi đủ để npm 10 không từ chối `npm ci`.
 
+Trên checkout sạch, chạy `npm run build` trước `npm run typecheck` như CI: TanStack tạo `src/routeTree.gen.ts` trong build/dev và file này không tracked. Typecheck trước bước sinh route tree sẽ báo thiếu module.
+
 ## Vì sao có bốn upstream contracts tùy chọn
 
 `.grok/skills/og` thuộc bộ prompt/skill do nền tảng cung cấp, bị git-ignore và không được import để Luna chạy. Hai file sau trước đây đọc nó vô điều kiện:
