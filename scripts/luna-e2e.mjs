@@ -75,6 +75,16 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   assert.ok(ready, "Start the local dev server or built preview before running E2E.");
+  const authResponse = await fetch(new URL("/api/auth/get-session", url), {
+    redirect: "error",
+    signal: AbortSignal.timeout(5000),
+  });
+  assert.equal(
+    authResponse.status,
+    503,
+    "Default local environment must not enable live authentication.",
+  );
+  assert.equal((await authResponse.json()).code, "AUTH_DISABLED");
   await browser(
     "--executable-path",
     executable,
@@ -85,6 +95,17 @@ try {
     "open",
     url.href,
   );
+  await wait('document.querySelector("[data-luna-ready=true]") !== null');
+  await browser("open", new URL("/login", url).href);
+  await wait('document.body.innerText.includes("Đăng nhập chưa được chủ môi trường cấu hình")');
+  for (const [name, width, height] of [
+    ["desktop", 1280, 800],
+    ["mobile", 390, 844],
+  ]) {
+    await browser("set", "viewport", String(width), String(height));
+    await browser("screenshot", join(artifacts, `login-${name}.png`));
+  }
+  await browser("open", url.href);
   await wait('document.querySelector("[data-luna-ready=true]") !== null');
   for (const [viewport, width, height] of [
     ["desktop", 1280, 800],

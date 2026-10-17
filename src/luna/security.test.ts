@@ -43,6 +43,8 @@ describe("phase 6 security", () => {
     }
     assert.throws(() => parseCreateTaskInput({ goal: JSON.stringify({ password: "synthetic-pass" }) }));
     assert.ok(scanText("config/production.env.example", "NINE_ROUTER_API_KEY=SYNTHETIC_VALUE").some((row) => row.rule === "populated-secret-template"));
+    assert.ok(scanText("config/trusted-runtime.env.example", "LUNA_DATABASE_URL=SYNTHETIC_VALUE").some((row) => row.rule === "populated-secret-template"));
+    assert.ok(scanText("config/trusted-runtime.env.example", "DATABASE_URL=SYNTHETIC_VALUE").some((row) => row.rule === "populated-secret-template"));
     assert.equal(containsSecret("URL public, không phải secret:\n\n`https://example.invalid`"), false);
     assert.equal(containsSecret('{"password":\n"synthetic-pass"}'), true);
   });

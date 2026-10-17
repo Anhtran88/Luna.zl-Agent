@@ -2,14 +2,14 @@
 
 ## Phạm vi và invariants
 
-Đây là thay đổi local-only trên app hiện tại. Không thêm identity provider, credential, database socket, deploy hay durable storage. Không cấp quyền cho owner được khai báo trong repo.
+Demo local giữ các invariants memory bên dưới. Verified runtime mới có [Better Auth, signed policy và transactional SQL store](TRUSTED_RUNTIME.md), chưa được kích hoạt hoặc cấp credential. Không tự cấp quyền cho owner được khai báo trong repo.
 
-1. HTTP approve/reject/execute phải qua `runOperatorCommand`. Chưa có trusted identity/role resolver hoặc owner authorization nên cả ba lệnh đều bị từ chối với `AUTH_REQUIRED`, kể cả khi template auth-off. Payload/header tự khai role không được dùng làm principal. Create/plan/cancel/snapshot vẫn là demo local với dữ liệu tổng hợp, chưa có per-user isolation.
+1. Đường demo HTTP approve/reject/execute phải qua `runOperatorCommand` và bị từ chối với `AUTH_REQUIRED`, kể cả khi template auth-off. Đường verified đi qua session verification + signed policy + workspace service; thiếu cấu hình không fallback demo. Payload/header tự khai role không được dùng làm principal. Create/plan/cancel/snapshot vẫn là demo local với dữ liệu tổng hợp, chưa có per-user isolation.
 2. Pure role contract chỉ nhận context từ server đáng tin: authenticated, đúng role approver/executor, không owner collision và có owner authorization. Fixtures chỉ kiểm policy; không được nối vào runtime hoặc gán quyền cho kenbi.
 3. Mỗi control-plane instance chỉ cho một mutation/task đang chạy. Lệnh đua nhận `BUSY`, phải đọc lại state trước retry; không tự queue một quyết định cũ. Duplicate approval bị từ chối, không đổi quyết định đầu và không thêm decision audit. Terminal execute replay không thêm run hoặc success audit.
 4. Snapshot, kết quả command và memory-store reads/writes phải tách tham chiếu, kể cả nested plan. Không thể sửa bản đọc để tự duyệt hoặc đổi persistence mà không gọi write.
 5. Khi mutation lỗi sau khi đã đổi state hoặc gặp lỗi I/O không xác định, task chuyển blocked trong instance, các lần tiếp theo nhận `RECOVERY_REQUIRED`. Không tự retry khi chưa biết phần nào đã ghi. Store hiện không có transaction/CAS; trạng thái persisted có thể ghi một phần và cần đối chiếu thủ công. Không hứa exactly-once qua nhiều worker hoặc restart.
-6. Browser reload đọc lại cùng server memory. New plane/process không hydrate tasks/approvals/runs/audit từ store. Stored task cũ không được tự phục hồi quyền execute; trả `NOT_FOUND`. Không coi test tạo instance mới là restart persistence thực. Chưa có disk persistence để kiểm process restart/recovery.
+6. Browser reload đọc lại cùng server memory. New default memory plane/process không hydrate tasks/approvals/runs/audit từ MemoryLunaStore; verified SQL service hydrate checkpoint trong transaction. Stored task cũ không được tự phục hồi quyền execute; trả `NOT_FOUND`. Không coi test tạo instance mới là restart persistence thực. Memory không bền qua restart; SQL service đã có disk/SIGKILL integration tests riêng, chưa chứng minh network PostgreSQL/HA.
 
 ## Acceptance tests
 

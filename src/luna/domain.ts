@@ -116,6 +116,10 @@ export interface AuditEvent {
   detail: string;
   /** Every persisted event is a dry-run. Nothing external ran. */
   dryRun: true;
+  /** Server-verified provenance, populated by the transactional command service. */
+  principal?: string;
+  workspaceId?: string;
+  requestId?: string;
 }
 
 export interface Clock {
@@ -138,7 +142,7 @@ export interface ControlPlaneSnapshot {
   release: typeof LUNA_RELEASE;
   phaseLock: true;
   schemaVersion: 1;
-  storeMode: "memory" | "firebase";
+  storeMode: "memory" | "firebase" | "postgres";
   generatedAt: string;
   modules: ModuleStatus[];
   tasks: AgentTask[];
@@ -232,8 +236,21 @@ export interface ControlPlaneSnapshot {
 }
 
 export type CommandResult<T> =
-  | { ok: true; data: T; snapshot: ControlPlaneSnapshot }
-  | { ok: false; code: string; message: string; snapshot: ControlPlaneSnapshot };
+  | {
+      ok: true;
+      data: T;
+      snapshot: ControlPlaneSnapshot;
+      acknowledged?: boolean;
+      requestId?: string;
+    }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+      snapshot: ControlPlaneSnapshot;
+      acknowledged?: boolean;
+      requestId?: string;
+    };
 
 export function systemClock(): Clock {
   return { now: () => new Date().toISOString() };

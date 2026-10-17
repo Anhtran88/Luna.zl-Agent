@@ -1,3 +1,4 @@
+import { reliableCommand } from "@/luna/command-request";
 import { useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Moon, ShieldCheck } from "lucide-react";
@@ -83,6 +84,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             Bàn điều khiển tác vụ cho Zalo và eOffice sau này. Phase 12 kiểm compliance local.
             Production vẫn NO-GO.
           </p>
+          <a href="/login" className="text-sm underline">
+            Đăng nhập / tài khoản
+          </a>
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Firebase</dt>
@@ -260,7 +264,11 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                 className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                 onClick={() =>
                   void after(async () => {
-                    const result = await createTask({ data: { goal, title: "" } });
+                    const result = await reliableCommand(
+                      "create",
+                      { goal, title: "" },
+                      (requestId) => createTask({ data: { goal, title: "", requestId } }),
+                    );
                     return {
                       ok: result.ok,
                       message: result.ok ? "Đã tạo tác vụ nháp." : result.message,
@@ -360,7 +368,11 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                         className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                         onClick={() =>
                           void after(async () => {
-                            const result = await planTask({ data: { taskId: selected.id } });
+                            const result = await reliableCommand(
+                              "planTask",
+                              { taskId: selected.id },
+                              (requestId) => planTask({ data: { taskId: selected.id, requestId } }),
+                            );
                             return {
                               ok: result.ok,
                               message: result.ok ? "Đã lập kế hoạch." : result.message,
@@ -381,7 +393,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                         className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                         onClick={() =>
                           void after(async () => {
-                            const result = await executeTask({ data: { taskId: selected.id } });
+                            const result = await reliableCommand(
+                              "executeTask",
+                              { taskId: selected.id },
+                              (requestId) =>
+                                executeTask({ data: { taskId: selected.id, requestId } }),
+                            );
                             return {
                               ok: result.ok,
                               message: result.ok ? "Dry-run xong." : result.message,
@@ -398,7 +415,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                         className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                         onClick={() =>
                           void after(async () => {
-                            const result = await cancelTask({ data: { taskId: selected.id } });
+                            const result = await reliableCommand(
+                              "cancelTask",
+                              { taskId: selected.id },
+                              (requestId) =>
+                                cancelTask({ data: { taskId: selected.id, requestId } }),
+                            );
                             return {
                               ok: result.ok,
                               message: result.ok ? "Đã hủy." : result.message,
@@ -422,13 +444,19 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                             className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                             onClick={() =>
                               void after(async () => {
-                                const result = await decideApproval({
-                                  data: {
-                                    approvalId: approval.id,
-                                    decision: "approved",
-                                    note: "Duyệt dry-run, không cho live.",
-                                  },
-                                });
+                                const result = await reliableCommand(
+                                  "approval",
+                                  { approvalId: approval.id, decision: "approved" },
+                                  (requestId) =>
+                                    decideApproval({
+                                      data: {
+                                        approvalId: approval.id,
+                                        decision: "approved",
+                                        note: "Duyệt dry-run, không cho live.",
+                                        requestId,
+                                      },
+                                    }),
+                                );
                                 return {
                                   ok: result.ok,
                                   message: result.ok ? "Đã duyệt dry-run." : result.message,
@@ -445,13 +473,19 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                             className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                             onClick={() =>
                               void after(async () => {
-                                const result = await decideApproval({
-                                  data: {
-                                    approvalId: approval.id,
-                                    decision: "rejected",
-                                    note: "Không làm.",
-                                  },
-                                });
+                                const result = await reliableCommand(
+                                  "approval",
+                                  { approvalId: approval.id, decision: "rejected" },
+                                  (requestId) =>
+                                    decideApproval({
+                                      data: {
+                                        approvalId: approval.id,
+                                        decision: "rejected",
+                                        note: "Không làm.",
+                                        requestId,
+                                      },
+                                    }),
+                                );
                                 return {
                                   ok: result.ok,
                                   message: result.ok ? "Đã từ chối." : result.message,

@@ -119,7 +119,7 @@ export function scanText(path: string, text: string): SecurityFinding[] {
   if (/\.env(?:\.[^/]*)?$/.test(path)) {
     for (const line of text.split(/\r?\n/)) {
       const assignment = /^\s*([a-z_][a-z0-9_]*)\s*=\s*(.*)$/i.exec(line);
-      if (assignment && /(?:TOKEN|SECRET|PASSWORD|COOKIE|API_?KEY|SERVICE_ACCOUNT_JSON)$/i.test(assignment[1]) && assignment[2].replace(/#.*$/, "").replace(/["'\s]/g, "")) {
+      if (assignment && (/(?:TOKEN|SECRET|PASSWORD|COOKIE|API_?KEY|SERVICE_ACCOUNT_JSON)$/i.test(assignment[1]) || /^(?:LUNA_)?DATABASE_URL$/i.test(assignment[1])) && assignment[2].replace(/#.*$/, "").replace(/["'\s]/g, "")) {
         findings.push({ severity: "high", path, rule: "populated-secret-template" });
       }
     }

@@ -10,6 +10,7 @@ import {
   LunaError,
   randomIds,
   systemClock,
+  sequenceIds,
   LUNA_PHASE,
   LUNA_RELEASE,
   type AgentRun,
@@ -41,7 +42,7 @@ import { redactAuditDetail, SECURITY_POSTURE, containsSecret } from "./security.
 import { createRealtimeDatabase, type RealtimeDatabase } from "./firebase.ts";
 import { decideExecution, planRequiresApproval } from "./governance.ts";
 import { createModelRouter, type ModelRouter } from "./models.ts";
-import { SCHEMA_VERSION } from "./schema.ts";
+import { SCHEMA_VERSION, parseTaskRecord, parseApprovalRecord, parseAuditRecord, parseRunRecord, wrapRecord } from "./schema.ts";
 import { MemoryLunaStore, type LunaStore } from "./store.ts";
 
 export interface ControlPlaneDeps {
@@ -64,6 +65,15 @@ export interface ControlPlaneDeps {
 
 const QUEUE_SEED = { items: [] as string[], phase: LUNA_PHASE };
 
+export interface PlaneCheckpoint {
+  version: 1;
+  tasks: AgentTask[];
+  approvals: ApprovalRequest[];
+  audits: AuditEvent[];
+  runs: AgentRun[];
+  recoveryRequired: string[];
+}
+
 export class LunaControlPlane {
   private readonly tasks = new Map<string, AgentTask>();
   private readonly approvals = new Map<string, ApprovalRequest>();
@@ -75,6 +85,55 @@ export class LunaControlPlane {
 
   constructor(deps: ControlPlaneDeps) {
     this.deps = deps;
+  }
+
+  exportCheckpoint(): PlaneCheckpoint {
+    if (this.mutations.size) throw new LunaError("BUSY", "Không checkpoint khi mutation đang chạy.");
+    return structuredClone({ version: 1, tasks: [...this.tasks.values()], approvals: [...this.approvals.values()], audits: this.audits, runs: this.runs, recoveryRequired: [...this.recoveryRequired] });
+  }
+
+  static restoreCheckpoint(value: unknown): LunaControlPlane {
+    const state = value as PlaneCheckpoint;
+    if (!state || state.version !== 1 || ![state.tasks, state.approvals, state.audits, state.runs, state.recoveryRequired].every(Array.isArray)) throw new LunaError("MIGRATION", "Checkpoint không tương thích.");
+    const plane = LunaControlPlane.createDefault({}); // All adapters are local/mock; never hydrate live config.
+    for (const raw of state.tasks) {
+      const task = parseTaskRecord(wrapRecord("task", structuredClone(raw)));
+      if (task.mode !== "dry-run" || plane.tasks.has(task.id)) throw new LunaError("VALIDATION", "Task checkpoint không hợp lệ.");
+      if (task.plan) {
+        const expected = createPlan(task.goal, { ids: sequenceIds(), clock: { now: () => task.createdAt } });
+        const contract = (steps: typeof expected.steps) => steps.map(step => step && ({ kind: step.kind, sensitivity: step.sensitivity, requiresApproval: step.requiresApproval }));
+        if (!Array.isArray(task.plan.steps) || JSON.stringify(contract(task.plan.steps)) !== JSON.stringify(contract(expected.steps))) throw new LunaError("VALIDATION", "Checkpoint plan không khớp policy hiện tại.");
+      }
+      plane.tasks.set(task.id, task);
+    }
+    for (const raw of state.approvals) {
+      const approval = parseApprovalRecord(wrapRecord("approval", structuredClone(raw)));
+      if (!plane.tasks.has(approval.taskId) || plane.approvals.has(approval.id)) throw new LunaError("VALIDATION", "Approval checkpoint không hợp lệ.");
+      plane.approvals.set(approval.id, approval);
+    }
+    for (const task of plane.tasks.values()) {
+      if (task.approvalId && plane.approvals.get(task.approvalId)?.taskId !== task.id) throw new LunaError("VALIDATION", "Checkpoint mất liên kết approval.");
+      const approval = task.approvalId ? plane.approvals.get(task.approvalId) : undefined;
+      if ((task.status === "awaiting_approval" && approval?.status !== "pending") ||
+          (task.status === "approved" && approval?.status !== "approved") ||
+          (task.status === "rejected" && approval?.status !== "rejected") ||
+          (["planned", "awaiting_approval", "approved", "dry_run_completed"].includes(task.status) && !task.plan)) throw new LunaError("VALIDATION", "Checkpoint state/approval không khớp.");
+    }
+    for (const raw of state.audits) {
+      const event = parseAuditRecord(wrapRecord("audit", structuredClone(raw)));
+      if (event.taskId && !plane.tasks.has(event.taskId)) throw new LunaError("VALIDATION", "Checkpoint mất task audit.");
+      plane.audits.push(event);
+    }
+    for (const raw of state.runs) {
+      const run = parseRunRecord(wrapRecord("run", structuredClone(raw)));
+      if (!plane.tasks.has(run.taskId)) throw new LunaError("VALIDATION", "Checkpoint mất task run.");
+      plane.runs.push(run);
+    }
+    for (const id of state.recoveryRequired) {
+      if (!plane.tasks.has(id)) throw new LunaError("VALIDATION", "Recovery checkpoint không hợp lệ.");
+      plane.recoveryRequired.add(id);
+    }
+    return plane;
   }
 
   static createDefault(

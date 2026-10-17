@@ -84,6 +84,24 @@ test("staging live flag and dummy credential never construct a network adapter",
 });
 
 test("staging bindings are covered by live, secret and endpoint preflight checks", () => {
+  for (const name of [
+    "DATABASE_URL",
+    "LUNA_DATABASE_URL",
+    "BETTER_AUTH_SECRET",
+    "GROK_AUTH_CLIENT_SECRET",
+  ]) {
+    const bindings = { [name]: "fixture-only" };
+    assert.equal(describeDeployPosture(bindings).blocked, true);
+    assert.equal(
+      assessStaging({ env: bindings }).checks.find((check) => check.id === "credential-absent")?.ok,
+      false,
+    );
+    assert.equal(
+      assessProduction({ env: bindings }).checks.find((check) => check.id === "credential-absent")
+        ?.ok,
+      false,
+    );
+  }
   const env = {
     ...staging,
     STAGING_FIREBASE_LIVE_ENABLED: "true",

@@ -34,7 +34,7 @@ Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.ex
 
 ## Kiểm thử tái lập
 
-Staging RTDB dùng binding riêng; approve/execute HTTP hiện fail-closed vì chưa có trusted auth/roles và owner authorization. Xem [local auth/state contract và staging wiring](docs/LOCAL_AUTH_STATE_CONTRACT.md). Không bật kết nối thật chỉ bằng cách điền URL hoặc live flag.
+Staging RTDB dùng binding riêng; approve/execute mặc định fail-closed. Đã có [trusted session, signed SoD policy và transactional persistence](docs/TRUSTED_RUNTIME.md), nhưng chưa cấu hình account/owner authorization/database thật. [Local contract](docs/LOCAL_AUTH_STATE_CONTRACT.md) giữ cho demo và staging metadata. Không bật kết nối thật chỉ bằng cách điền URL hoặc live flag.
 
 `npm ci` rồi `npm test` chạy cả scripts và app tests. Số test được in bởi runner; không giữ số cố định của phase cũ làm tiêu chí. Bốn contract tests của tài liệu OG upstream sẽ ghi **SKIP** khi `.grok/skills/og` không được cung cấp. Đây là prompt của nền tảng bị git-ignore, không phải source cần để Luna chạy. Các kiểm tra `AGENTS.md` tracked và mọi kiểm tra chức năng vẫn chạy. Không tạo tài liệu giả để làm xanh.
 

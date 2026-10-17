@@ -53,4 +53,4 @@ Desktop/mobile đều kiểm approve/reject/execute bị từ chối khi auth ch
 
 Form chỉ nhận thao tác sau khi React hydrate xong để nội dung nhập sớm không bị reset thành preset. Task đã hủy không còn hiện nút duyệt; backend từ chối cả approve/reject cho yêu cầu cũ và regression test kiểm chứng điều này.
 
-Xem [local auth/state contract](LOCAL_AUTH_STATE_CONTRACT.md) cho role fixtures và deterministic race/replay tests. Đây chưa phải tích hợp identity thật, durable persistence, multi-worker concurrency hay staging/live validation. Tất cả vẫn NO-GO.
+Xem [trusted runtime](TRUSTED_RUNTIME.md) cho session mocks (chỉ trong tests), signed-policy fixtures, SQL atomic/replay/isolation, disk reopen và actual SIGKILL tests. [Local contract](LOCAL_AUTH_STATE_CONTRACT.md) mô tả demo memory. PGLite là PostgreSQL engine local; two service instances không thay thế load test bằng các network PG connections độc lập. Đây chưa phải sign-in account thật hoặc staging/live validation. E2E cũng kiểm auth API mặc định disabled và trang login disabled; không gọi provider thật. Tất cả vẫn NO-GO.
