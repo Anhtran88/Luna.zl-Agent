@@ -32,6 +32,18 @@ npm run ops:check
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 
+## Kiểm thử tái lập
+
+`npm ci` rồi `npm test` chạy cả scripts và app tests. Số test được in bởi runner; không giữ số cố định của phase cũ làm tiêu chí. Bốn contract tests của tài liệu OG upstream sẽ ghi **SKIP** khi `.grok/skills/og` không được cung cấp. Đây là prompt của nền tảng bị git-ignore, không phải source cần để Luna chạy. Các kiểm tra `AGENTS.md` tracked và mọi kiểm tra chức năng vẫn chạy. Không tạo tài liệu giả để làm xanh.
+
+Để kiểm contract với nguồn upstream thật: `LUNA_OG_SKILL_DIR=/path/to/upstream/og npm run test:upstream`. Chế độ này bắt buộc tài liệu; thiếu/sai nội dung phải fail. Thư mục skill chỉ có một phần cũng không được tự skip. `config/app-env.json` cung cấp mặc định public auth-off cho checkout sạch; `.grok/app-env.json` tùy chọn và biến process vẫn có quyền override. Đây không phải cấu hình auth staging.
+
+## UI E2E local
+
+CLI `agent-browser` được pin trong dev dependencies, dùng Chromium cài sẵn hoặc `AGENT_BROWSER_EXECUTABLE_PATH`. Khi dev server đang chạy, dùng `npm run test:e2e`. Sau `npm run build` và `npm run preview:restart`, chạy `LUNA_E2E_URL=http://127.0.0.1:8081/ npm run test:e2e`.
+
+Runner kiểm desktop/mobile cho create → plan → approval → dry-run → audit, cùng nhánh từ chối và hủy. Chỉ nhận loopback dev/built, chặn resource ngoài domain local, dùng session mới và đóng browser sau test. Approval không cho phép ghi Firebase; test kiểm audit `refused` của bước ghi và vẫn NO-GO. Browser này chỉ kiểm UI local; adapter browser của Luna vẫn mock/stub, launch off. Artifacts ở `screenshots/e2e-*` (cloud: `/workspace/screenshots/e2e-*`), không commit. CI chạy toàn bộ `npm test` và E2E dev/built.
+
 ## Phase 0/1 làm được gì
 
 - Tạo tác vụ, planner tách executor, vòng đời nháp → kế hoạch → duyệt → dry-run.

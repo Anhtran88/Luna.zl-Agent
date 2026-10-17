@@ -1,0 +1,204 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const url = new URL(process.env.LUNA_E2E_URL ?? "http://127.0.0.1:8080/");
+assert.ok(
+  url.protocol === "http:" &&
+    url.hostname === "127.0.0.1" &&
+    ["8080", "8081"].includes(url.port) &&
+    url.pathname === "/" &&
+    !url.username &&
+    !url.password &&
+    !url.search &&
+    !url.hash,
+  "E2E accepts only the local Luna dev/built endpoints.",
+);
+const executable =
+  process.env.AGENT_BROWSER_EXECUTABLE_PATH ??
+  ["/usr/bin/chromium", "/usr/bin/google-chrome"].find(existsSync);
+assert.ok(
+  executable,
+  "Install Chromium or set AGENT_BROWSER_EXECUTABLE_PATH before running local E2E.",
+);
+const socketDir = mkdtempSync(join(tmpdir(), "luna-e2e-"));
+const artifacts = join(
+  root.startsWith("/workspace/") ? "/workspace" : root,
+  "screenshots",
+  `e2e-${url.port}`,
+);
+mkdirSync(artifacts, { recursive: true });
+const session = `luna-e2e-${randomUUID().slice(0, 8)}`;
+const execute = promisify(execFile);
+const cli = join(root, "node_modules", ".bin", "agent-browser");
+const checks = [];
+const env = { ...process.env };
+for (const key of Object.keys(env)) if (key.startsWith("AGENT_BROWSER_")) delete env[key];
+env.AGENT_BROWSER_SOCKET_DIR = socketDir;
+const browserConfig = join(socketDir, "config.json");
+writeFileSync(browserConfig, "{}"); // No inherited profiles, saved auth, providers, or restore state.
+async function browser(...args) {
+  const { stdout } = await execute(
+    cli,
+    ["--config", browserConfig, "--session", session, "--json", ...args],
+    { cwd: root, env, timeout: 35_000, maxBuffer: 2_000_000 },
+  );
+  const response = JSON.parse(stdout);
+  assert.equal(response.success, true, response.error ?? args[0]);
+  return response.data;
+}
+const click = (name) => browser("find", "role", "button", "click", "--name", name, "--exact");
+const wait = (expression) => browser("wait", "--fn", expression);
+const read = async (expression) => (await browser("eval", expression)).result;
+const detail = 'document.querySelector("[data-testid=task-detail]")';
+const disabled = (name) =>
+  `Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()===${JSON.stringify(name)})?.disabled === true`;
+
+try {
+  let ready = false;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    try {
+      const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(1000) });
+      ready = response.ok && (await response.text()).includes("Luna · Phase 12");
+    } catch {
+      /* Startup may still be compiling. */
+    }
+    if (ready) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  assert.ok(ready, "Start the local dev server or built preview before running E2E.");
+  await browser(
+    "--executable-path",
+    executable,
+    "--args",
+    "--no-sandbox",
+    "--allowed-domains",
+    "127.0.0.1",
+    "open",
+    url.href,
+  );
+  await wait('document.querySelector("[data-luna-ready=true]") !== null');
+  for (const [viewport, width, height] of [
+    ["desktop", 1280, 800],
+    ["mobile", 390, 844],
+  ]) {
+    await browser("set", "viewport", String(width), String(height));
+    for (const decision of ["approved", "rejected", "cancelled"]) {
+      const marker = `E2E-${randomUUID().slice(0, 8)}`;
+      await browser("fill", "#goal", `${marker}: Ghi Firebase bằng mô phỏng, không gọi mạng.`);
+      await click("Tạo tác vụ");
+      await wait(
+        `${detail}?.dataset.taskStatus === "draft" && ${detail}?.textContent.includes(${JSON.stringify(marker)})`,
+      );
+      const taskId = await read(`${detail}.dataset.taskId`);
+      await click("Lập kế hoạch");
+      await wait(`${detail}?.dataset.taskStatus === "awaiting_approval"`);
+      assert.equal(
+        await read(disabled("Chạy dry-run")),
+        true,
+        "Execution must be disabled before approval.",
+      );
+      if (decision === "approved") {
+        await click("Duyệt dry-run");
+        await wait(`${detail}?.dataset.taskStatus === "approved"`);
+        await click("Chạy dry-run");
+        await wait(`${detail}?.dataset.taskStatus === "dry_run_completed"`);
+      } else {
+        await click(decision === "rejected" ? "Từ chối" : "Hủy");
+        await wait(`${detail}?.dataset.taskStatus === ${JSON.stringify(decision)}`);
+      }
+      assert.equal(
+        await read(disabled("Chạy dry-run")),
+        true,
+        "Terminal tasks must not execute again.",
+      );
+      assert.equal(
+        await read(
+          'Array.from(document.querySelectorAll("button")).some(b => ["Duyệt dry-run", "Từ chối"].includes(b.textContent.trim()))',
+        ),
+        false,
+        "Terminal tasks must not offer approval actions.",
+      );
+      const actions = await read(
+        `Array.from(document.querySelectorAll("[data-audit-action]")).filter(e=>e.dataset.taskId===${JSON.stringify(taskId)}).map(e=>({action:e.dataset.auditAction,text:e.textContent}))`,
+      );
+      for (const action of [
+        "task.create",
+        "task.plan",
+        decision === "approved"
+          ? "approval.approve"
+          : decision === "rejected"
+            ? "approval.reject"
+            : "task.cancel",
+      ]) {
+        assert.ok(
+          actions.some((row) => row.action === action),
+          `Missing ${action} audit for this task.`,
+        );
+      }
+      if (decision === "approved") {
+        assert.ok(
+          actions.some((row) => row.action === "task.execute" && row.text.includes("simulated")),
+        );
+        assert.ok(
+          actions.some(
+            (row) => row.action === "step.firebase_write" && row.text.includes("refused"),
+          ),
+          "Approval cannot authorize a Firebase write.",
+        );
+      } else assert.ok(!actions.some((row) => row.action === "task.execute"));
+      assert.equal(
+        await read(
+          'document.body.innerText.includes("NO-GO") && document.body.innerText.includes("launch off")',
+        ),
+        true,
+      );
+      checks.push({ viewport, decision, auditVerified: true, live: false });
+    }
+    assert.equal(
+      await read("document.documentElement.scrollWidth > window.innerWidth"),
+      false,
+      "Horizontal overflow",
+    );
+    await browser("scrollintoview", "[data-testid=task-detail]");
+    await browser("screenshot", join(artifacts, `${viewport}.png`));
+  }
+  const errors = await browser("errors");
+  assert.ok(Array.isArray(errors.errors), "Browser must report its uncaught-error collection.");
+  assert.deepEqual(errors.errors, [], "Uncaught app errors");
+  const verdict = {
+    ok: true,
+    target: url.port === "8080" ? "dev" : "built",
+    checks,
+    externalDomainsAllowed: false,
+  };
+  writeFileSync(join(artifacts, "verdict.json"), `${JSON.stringify(verdict, null, 2)}\n`);
+  console.log(JSON.stringify(verdict));
+} catch (error) {
+  const failure = {
+    ok: false,
+    target: url.port === "8080" ? "dev" : "built",
+    message: String(error.message),
+  };
+  try {
+    failure.snapshot = await browser("snapshot");
+    failure.errors = await browser("errors");
+    await browser("screenshot", join(artifacts, "failure.png"), "--full");
+  } catch (captureError) {
+    failure.captureError = String(captureError.message);
+  }
+  writeFileSync(join(artifacts, "verdict.json"), `${JSON.stringify(failure, null, 2)}\n`);
+  throw error;
+} finally {
+  try {
+    await browser("close");
+  } finally {
+    rmSync(socketDir, { recursive: true, force: true });
+  }
+}

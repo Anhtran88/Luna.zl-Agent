@@ -1,7 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Moon, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ControlPlaneSnapshot, TaskStatus } from "@/luna/domain";
 import { TASK_PRESETS } from "@/luna/presets";
 import {
@@ -30,6 +30,8 @@ function stamp(iso: string): string {
 }
 
 export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
+  const [clientReady, setClientReady] = useState(false);
+  useEffect(() => setClientReady(true), []);
   const router = useRouter();
   const createTask = useServerFn(createTaskFn);
   const planTask = useServerFn(planTaskFn);
@@ -64,7 +66,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
   }
 
   return (
-    <div className="min-h-screen bg-ink text-fg">
+    <div data-luna-ready={clientReady} className="min-h-screen bg-ink text-fg">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:px-6 lg:py-10">
         <aside className="flex flex-col gap-6 border-l-4 border-l-amber pl-4 lg:sticky lg:top-8 lg:self-start">
           <div className="flex items-center gap-3">
@@ -84,13 +86,13 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
           <dl className="grid gap-3 text-sm">
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Firebase</dt>
-              <dd className="mt-1 font-medium">
-                {snapshot.adapters.firebase.mode} · offline
-              </dd>
+              <dd className="mt-1 font-medium">{snapshot.adapters.firebase.mode} · offline</dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Model</dt>
-              <dd className="mt-1 font-medium">{snapshot.adapters.models.activeProvider} · locked</dd>
+              <dd className="mt-1 font-medium">
+                {snapshot.adapters.models.activeProvider} · locked
+              </dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Browser</dt>
@@ -123,9 +125,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Validation</dt>
-              <dd className="mt-1 font-medium">
-                {snapshot.validation.scope} · chưa production
-              </dd>
+              <dd className="mt-1 font-medium">{snapshot.validation.scope} · chưa production</dd>
             </div>
             <div className="rounded-2xl border border-line bg-panel px-4 py-3">
               <dt className="text-muted">Governance</dt>
@@ -177,8 +177,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                   API không nhận chế độ live. Deploy {snapshot.deployment.target} là dry-run, chưa
                   production. Firebase, 9Router và browser đều locked hoặc mock. Store{" "}
                   {snapshot.storeMode}. Model {snapshot.adapters.models.activeProvider}, timeout{" "}
-                  {snapshot.adapters.models.timeoutMs} ms, retry {snapshot.adapters.models.maxRetries},
-                  chi phí ${snapshot.adapters.models.estimatedCostUsd}.
+                  {snapshot.adapters.models.timeoutMs} ms, retry{" "}
+                  {snapshot.adapters.models.maxRetries}, chi phí $
+                  {snapshot.adapters.models.estimatedCostUsd}.
                 </p>
               </div>
             </div>
@@ -224,6 +225,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                 <button
                   key={preset.id}
                   type="button"
+                  disabled={!clientReady}
                   aria-pressed={preset.goal === goal}
                   className={
                     preset.goal === goal
@@ -241,6 +243,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             </label>
             <textarea
               id="goal"
+              disabled={!clientReady}
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
               maxLength={2000}
@@ -253,7 +256,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={busy || !goalReady}
+                disabled={!clientReady || busy || !goalReady}
                 className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                 onClick={() =>
                   void after(async () => {
@@ -299,7 +302,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                 </ul>
 
                 {selected ? (
-                  <div className="min-w-0 rounded-2xl border border-line bg-ink p-4">
+                  <div
+                    data-testid="task-detail"
+                    data-task-id={selected.id}
+                    data-task-status={selected.status}
+                    className="min-w-0 rounded-2xl border border-line bg-ink p-4"
+                  >
                     <p className="text-xs text-muted">{selected.mode}</p>
                     <h3 className="mt-1 font-display text-2xl break-words">{selected.title}</h3>
                     <p className="mt-2 text-sm leading-6 break-words text-muted">{selected.goal}</p>
@@ -320,7 +328,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                         <dd className="mt-1 font-medium">
                           {approval
                             ? approval.status === "pending"
-                              ? "Chờ duyệt"
+                              ? selected.status === "awaiting_approval"
+                                ? "Chờ duyệt"
+                                : "Không còn hiệu lực"
                               : approval.status === "approved"
                                 ? "Đã duyệt dry-run"
                                 : "Từ chối"
@@ -346,7 +356,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={busy || selected.status !== "draft"}
+                        disabled={!clientReady || busy || selected.status !== "draft"}
                         className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                         onClick={() =>
                           void after(async () => {
@@ -364,7 +374,9 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                       <button
                         type="button"
                         disabled={
-                          busy || (selected.status !== "planned" && selected.status !== "approved")
+                          !clientReady ||
+                          busy ||
+                          (selected.status !== "planned" && selected.status !== "approved")
                         }
                         className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                         onClick={() =>
@@ -382,7 +394,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                       </button>
                       <button
                         type="button"
-                        disabled={busy || !canCancel}
+                        disabled={!clientReady || busy || !canCancel}
                         className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                         onClick={() =>
                           void after(async () => {
@@ -399,14 +411,14 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                       </button>
                     </div>
 
-                    {approval?.status === "pending" ? (
+                    {approval?.status === "pending" && selected.status === "awaiting_approval" ? (
                       <div className="mt-4 rounded-2xl border border-line bg-panel p-4">
                         <p className="text-sm font-medium">Cần duyệt trước dry-run</p>
                         <p className="mt-1 text-sm leading-6 text-muted">{approval.reason}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            disabled={busy}
+                            disabled={!clientReady || busy}
                             className="min-h-11 rounded-xl bg-amber px-4 text-sm font-medium text-amber-ink disabled:opacity-50"
                             onClick={() =>
                               void after(async () => {
@@ -429,7 +441,7 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
                           </button>
                           <button
                             type="button"
-                            disabled={busy}
+                            disabled={!clientReady || busy}
                             className="min-h-11 rounded-xl border border-line px-4 text-sm disabled:opacity-50"
                             onClick={() =>
                               void after(async () => {
@@ -505,7 +517,12 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
             ) : (
               <ul className="mt-4 flex flex-col gap-2">
                 {snapshot.audit.map((event) => (
-                  <li key={event.id} className="rounded-2xl border border-line bg-panel px-4 py-3">
+                  <li
+                    key={event.id}
+                    data-audit-action={event.action}
+                    data-task-id={event.taskId}
+                    className="rounded-2xl border border-line bg-panel px-4 py-3"
+                  >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-sm font-medium">
                         {event.action} · {event.outcome}
@@ -524,10 +541,15 @@ export function LunaDesk({ snapshot }: { snapshot: ControlPlaneSnapshot }) {
           <section className="rounded-2xl border border-line bg-panel p-4 sm:p-5">
             <h2 className="font-display text-3xl">Việc cần chủ repo quyết</h2>
             <ul className="mt-3 flex flex-col gap-2 text-sm leading-6 text-muted">
-              <li>Firebase live vẫn tắt. URL lunazl-agent đã ghi nhận, nhưng chưa có REST credential.</li>
+              <li>
+                Firebase live vẫn tắt. URL lunazl-agent đã ghi nhận, nhưng chưa có REST credential.
+              </li>
               <li>9Router live và ngân sách model vẫn cần quyết định riêng.</li>
               <li>Browser thật vẫn phải nằm sau cổng duyệt. Launch off.</li>
-              <li>Staging có mạng và production deploy cần xác nhận môi trường, credential và ngân sách.</li>
+              <li>
+                Staging có mạng và production deploy cần xác nhận môi trường, credential và ngân
+                sách.
+              </li>
               <li>Zalo và eOffice vẫn dừng cho đến khi có quyết định riêng. Không tự chạy.</li>
             </ul>
           </section>

@@ -105,6 +105,25 @@ describe("control plane mock flow", () => {
     assert.ok(plane.snapshot().audit.every((event) => event.dryRun === true));
   });
 
+  it("refuses stale approval decisions after cancellation", async () => {
+    const { plane } = planeWith();
+    const task = await plane.createTask({ goal: TASK_PRESETS[3].goal });
+    const planned = await plane.planTask(task.id);
+    assert.ok(planned.approvalId);
+    await plane.cancel(task.id);
+    for (const decision of ["approved", "rejected"] as const) {
+      await assert.rejects(
+        () => plane.decideApproval(planned.approvalId!, decision),
+        (error: unknown) => error instanceof LunaError && error.code === "BAD_STATUS",
+      );
+    }
+    assert.equal(plane.snapshot().tasks[0]?.status, "cancelled");
+    assert.equal(
+      plane.snapshot().audit.some((event) => event.action.startsWith("approval.")),
+      false,
+    );
+  });
+
   it("keeps approval notes short and refuses a second decision", async () => {
     const { plane } = planeWith();
     const task = await plane.createTask({ goal: TASK_PRESETS[3].goal });
