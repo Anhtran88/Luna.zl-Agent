@@ -59,3 +59,68 @@ Executor ở đây **chỉ local simulation**: hydrate bằng empty environment,
 6. **Trước live**: giải quyết 19 ops blockers, evidence digest/expiry/scope, security/privacy approval và phân công độc lập; đồng thời duyệt ngân sách/rules/least-privilege scopes/rollback. Firebase staging `lunazl-agent-staging-6dd7a` vẫn deny-all, **không probe/đổi Rules/kết nối** trong task này. Không dùng privileged credentials vượt Rules. Zalo/eOffice vẫn simulated read-only; không login/gửi/edit/submit hoặc ghi PDF thật.
 
 Trạng thái hiện tại: cơ chế kỹ thuật đã có code/tests local; identity/client secrets, signed policy/principals, PostgreSQL cấp thật, network-DB/live sign-in validation và giấy tờ governance còn phụ thuộc owner. Không deploy/merge, không cấp staging/live GO.
+
+## Offline preflight và runbook có thể lặp lại
+
+`npm run trusted:preflight` chỉ lint cấu hình trong environment đã được secret manager inject. Không đọc policy/key file, không xác minh chữ ký hay quyền IAM, không kết nối DB/provider, không in giá trị hoặc đường dẫn. Exit 1 khi thiếu/sai cấu hình; exit 0 chỉ nghĩa là cấu hình có hình thức phù hợp, vẫn luôn `decision: NO-GO`. TLS DB yêu cầu explicit `sslmode=verify-full`; CA trust/provider compatibility phải được admin xác nhận riêng. Không dùng kết quả này thay runtime authentication hoặc bằng chứng staging.
+
+| Nhóm                | Việc / điều kiện hoàn tất                                                                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tự xử lý trong repo | Trusted session, policy/SoD, atomic receipts/recovery, local SQL integration, offline config lint và CI đã có; tests không tạo quyền thật.                                                                                          |
+| Owner thao tác      | Chọn nhà cung cấp/region/plan, xác nhận giá/quota và quyền admin trước provisioning; đăng ký HTTPS callback; inject secrets, DB URLs và external policy paths; áp dụng migration được review; cấu hình CA/TLS, backup và retention. |
+| Không thể làm thay  | Bảy người độc lập, chữ ký owner/trust anchor và bằng chứng governance hợp lệ. Không tạo account giả hoặc ký tự động để gỡ gate.                                                                                                     |
+
+Các lệnh local không phí, chạy từ root checkout, không dùng credential:
+
+```sh
+npm ci
+npm test
+npm run typecheck
+npm run lint
+npm run build
+npm run security:check
+npm run governance:check
+npm run ops:check
+npm run readiness
+```
+
+Sau khi owner/admin đã duyệt chi phí, quyền và đúng DB staging (không chạy trong task này), từ terminal quản trị với bindings secret manager đã inject, không dán URL/password vào command/history:
+
+```sh
+# Kiểm cấu hình offline trước; kết quả không cấp quyền activation.
+npm run trusted:preflight
+# Chỉ DB admin, dùng PG* bindings của session DB đã được xác nhận:
+psql -X --set=ON_ERROR_STOP=1 --single-transaction --file=migrations/auth/0001_auth.sql
+# Đổi PG* bindings sang Luna DB đã xác nhận, không dùng nhầm production:
+psql -X --set=ON_ERROR_STOP=1 --single-transaction --file=migrations/luna/0001_atomic_workspaces.sql
+```
+
+`psql` ở đây dùng PGHOST/PGDATABASE/PGUSER/PGSSLMODE/PGSSLROOTCERT và secret manager/passfile; không có URI trong argv. Owner phải kiểm schema hiện hữu và lịch sử migration trước; không chạy lại blind khi table đã tồn tại. App role Luna chỉ SELECT/INSERT/UPDATE hai table, không DDL; session DB role theo schema Better Auth. Không tự cấp quyền từ script ứng dụng. Tiếp theo thực hiện từng bước activation review ở checklist phía trên, lưu evidence thực tế trước khi xét staging-ready. Giữ RTDB deny-all; PostgreSQL readiness không cấp quyền RTDB/Zalo/eOffice.
+
+### Phân loại đầy đủ 19 blocker ops hiện tại
+
+Không mục nào được đánh dấu resolved chỉ vì có code hoặc lệnh mẫu. `npm run ops:check` là source of truth cho trạng thái hiện tại.
+
+| Blocker ID                   | Nhóm còn chặn                            | Hành động / bằng chứng cần có                                                                                   |
+| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| owner-collision              | Không làm thay                           | Bảy người độc lập xác nhận vai trò; không đổi tên account để né SoD.                                            |
+| owner-separation             | Không làm thay                           | Owner review độc lập, signed policy và phân công có trách nhiệm.                                                |
+| policy-gate                  | Không làm thay                           | Phê duyệt đúng scope, chưa có consent thì giữ blocked.                                                          |
+| evidence:staging-environment | Owner thao tác                           | Ghi nhận môi trường, region, deny-all rules và verification được phép; không dùng owner report thay kiểm chứng. |
+| evidence:budget              | Không làm thay                           | Owner duyệt giá/quota/caps thực tế, gồm chi phí DB/Auth mới nếu có.                                             |
+| evidence:security-approval   | Không làm thay                           | Security reviewer ký evidence đúng artifact/scope.                                                              |
+| evidence:browser-policy      | Không làm thay                           | Duyệt chính sách browser; launch vẫn false.                                                                     |
+| evidence:zalo-eoffice-policy | Không làm thay                           | Bi chỉ định groups/scope read-only, BM03.2 chỉ read/compare; không gửi/sửa/submit.                              |
+| evidence:legal-privacy       | Không làm thay                           | Owner/legal xác nhận dữ liệu, retention, quyền sử dụng.                                                         |
+| evidence:artifact            | Owner thao tác                           | Lưu digest artifact kiểm chứng và tham chiếu phê duyệt.                                                         |
+| evidence:migration           | Owner thao tác                           | Admin ghi nhận migration đúng DB/schema, kết quả và review.                                                     |
+| evidence:backup              | Owner thao tác                           | Backup/restore evidence thực tế, không dùng local crash test thay backup provider.                              |
+| evidence:health              | Owner thao tác                           | Health evidence từ target được cấp quyền, không probe tự động trong task.                                       |
+| evidence:alerting            | Owner thao tác                           | Alert evidence bằng kênh/recipient được phê duyệt.                                                              |
+| artifact                     | Owner thao tác                           | Chọn artifact đã kiểm, digest và kế hoạch rollback.                                                             |
+| migration                    | Owner thao tác                           | Review/apply migration có ledger và khôi phục, app không DDL.                                                   |
+| backup                       | Owner thao tác                           | Chọn retention/backup và thực hiện restore drill được phép.                                                     |
+| production-health            | Owner thao tác, chưa được phép thực hiện | Chỉ kiểm khi có authorization production riêng; không triển khai/probe ở đây.                                   |
+| production-alerting          | Owner thao tác, chưa được phép thực hiện | Chọn recipient, consent và kiểm alert khi được duyệt; không gửi tin tự động.                                    |
+
+Nhóm tự xử lý ngay đã chuẩn bị các cơ chế kỹ thuật và checks local ở trên. Evidence registry vẫn yêu cầu digest, thời hạn, scope và approval reference thật; không nhập các fixtures/test results thành live sign-off.
