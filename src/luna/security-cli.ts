@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { scanText, type SecurityFinding } from "./security.ts";
 
-const ROOTS = ["src", "server", "scripts", "docs", "firebase", ".github"];
+const ROOTS = ["src", "server", "scripts", "docs", "firebase", "config", ".github"];
 const FILES = [
   "README.md",
   "ARCHITECTURE.md",

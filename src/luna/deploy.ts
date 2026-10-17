@@ -198,7 +198,7 @@ async function probeHealth(url: string | undefined, fetchImpl?: typeof fetch): P
     };
   }
   try {
-    const response = await fetchImpl(url, { method: "GET" });
+    const response = await fetchImpl(url, { method: "GET", redirect: "error", signal: AbortSignal.timeout(5000) });
     if (response.ok) {
       return { status: "local-ok", network: false, detail: "Health loopback trả trạng thái thành công." };
     }

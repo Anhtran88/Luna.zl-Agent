@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { LUNAZL_FIREBASE_DATABASE_URL } from "./config.ts";
 import {
   describeDeployPosture,
@@ -21,6 +22,34 @@ const LOCAL_ENV = {
 };
 
 describe("phase 5 deploy dry-run", () => {
+  it("never follows a health redirect, even to a second loopback path", async () => {
+    let redirectedRequests = 0;
+    const server = createServer((req, res) => {
+      if (req.url === "/health") {
+        res.writeHead(302, { Location: "/outside-health" });
+      } else {
+        redirectedRequests += 1;
+        res.writeHead(200);
+      }
+      res.end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address !== "string");
+      const report = await dryRunDeploy({
+        env: LOCAL_ENV,
+        healthUrl: `http://127.0.0.1:${address.port}/health`,
+        fetchImpl: globalThis.fetch,
+      });
+      assert.equal(report.health.status, "local-failed");
+      assert.equal(report.ok, false);
+      assert.equal(redirectedRequests, 0);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
   it("passes a local dry-run when secrets are missing and live flags are off", async () => {
     const report = await dryRunDeploy({ env: LOCAL_ENV, files: { "README.md": "no secrets" } });
     assert.equal(report.ok, true);

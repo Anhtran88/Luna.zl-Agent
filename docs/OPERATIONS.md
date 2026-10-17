@@ -34,6 +34,8 @@ License package: **MIT**. Copyright trong `LICENSE` dùng GitHub login `Anhtran8
 
 Quyết định ghi ở [config/readiness/owner-decisions.json](../config/readiness/owner-decisions.json). Evidence vẫn BLOCKED khi thiếu digest, hạn hoặc approval reference.
 
+Digest phải được cung cấp và khớp SHA-256 tính lại. Hạn dùng và thời điểm ghi nhận dùng UTC dạng `YYYY-MM-DDTHH:mm:ss[.SSS]Z`; ngày không hợp lệ hoặc thời điểm ghi nhận trong tương lai bị từ chối. Gate dùng đồng hồ hiện tại, không dùng ngày cố định. Policy chỉ nhận evidence đã qua cùng kiểm tra registry. Risk acceptance có hạn không hợp lệ cũng bị từ chối.
+
 Mẫu trống, không có dữ liệu thật, nằm ở [config/readiness](../config/readiness):
 
 | Mẫu | Chủ repo điền ngoài repo |
@@ -83,6 +85,8 @@ npm run deploy:dry-run -- --health http://127.0.0.1:8080/
 ```
 
 Preflight bắt buộc: phase lock, Firebase live tắt, 9Router live tắt, browser launch tắt, không có secret trong file đã quét, không có endpoint production mới. Firebase rules không được deploy. Quyền public không được mở.
+
+Health check loopback không theo redirect và có timeout 5 giây. Redirect làm kiểm tra thất bại, không chuyển sang URL đích.
 
 ## Rollback
 

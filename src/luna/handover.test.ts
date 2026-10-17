@@ -29,6 +29,32 @@ const NAMED = {
 } as const;
 
 describe("handover policy simulation", () => {
+  it("asks for prototype project names and invalid attachment counts without throwing", () => {
+    for (const project of ["constructor", "toString", "__proto__"]) {
+      const result = planDeliveryPdf({ ...NAMED, projectAlias: undefined, project });
+      assert.equal(result.decision, "ask");
+      assert.equal(result.fileName, null);
+      assertOffline(result);
+    }
+    const inherited = Object.create({ demo: "SUN" }) as Record<string, string>;
+    assert.equal(planDeliveryPdf({ ...NAMED, projectAlias: undefined, project: "demo", aliases: inherited }).decision, "ask");
+    for (const attachmentCount of [NaN, Infinity, -1, 0, 0.5, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const result = planDeliveryPdf({ ...NAMED, attachmentCount });
+      assert.equal(result.decision, "ask");
+      assert.equal(result.fileName, null);
+      assertOffline(result);
+    }
+    assert.equal(planDeliveryPdf({ ...NAMED, material: "Đá" }).fileName, "P.GIAO_DA_15.01.2026_SUN.pdf");
+  });
+
+  it("refuses unknown runtime actions even when the group and form are designated", () => {
+    const zalo = simulateZalo({ action: "delete" as "read", group: "designated-bi" });
+    const eoffice = simulateEoffice({ action: "delete" as "read", form: "BM03.2" });
+    for (const result of [zalo, eoffice]) {
+      assert.equal(result.decision, "refused");
+      assertOffline(result);
+    }
+  });
   it("allows a simulated Zalo read only in a designated Bi group and never sends", () => {
     const read = simulateZalo({ action: "read", group: "designated-bi" });
     assert.equal(read.decision, "simulated");

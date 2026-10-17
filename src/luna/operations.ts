@@ -213,7 +213,8 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
   if (input.fetchImpl) {
     // Accepted only so a test can prove this gate never calls it.
   }
-  const now = input.now ?? "2026-10-16T06:00:00.000Z";
+  const now = input.now ?? new Date().toISOString();
+  if (timestamp(now) === null) throw new Error("Thời điểm đánh giá không hợp lệ.");
   const env = input.env ?? {};
   const owners = input.owners ?? {};
   const checklist: ChecklistItem[] = [];
@@ -257,7 +258,7 @@ export function assessOperations(input: OperationsInput = {}): OperationsReport 
   const governance = evaluateGovernance({
     env,
     owners,
-    evidence: governanceEvidence(input.evidence ?? [], now),
+    evidence: governanceEvidence(registry),
     rulesDeny: input.rulesDeny,
     sbom: input.sbom,
   });
@@ -386,8 +387,8 @@ export function summarizeOperations(report: OperationsReport): OperationsSummary
 
 function recordEvidence(field: string, rows: EvidenceInput[], now: string): EvidenceRecord {
   const submitted = rows.find((row) => row.field === field);
-  const recordedAt = submitted?.recordedAt ?? now;
-  const expiresAt = submitted?.expiresAt ?? null;
+  const recordedAt = timestamp(submitted?.recordedAt) === null ? now : submitted!.recordedAt!;
+  const expiresAt = timestamp(submitted?.expiresAt) === null ? null : submitted!.expiresAt!;
   if (!submitted || classify(submitted.body) === "missing") {
     return schemaRecord({
       field,
@@ -454,7 +455,7 @@ function recordEvidence(field: string, rows: EvidenceInput[], now: string): Evid
       approval: null,
     });
   }
-  if (submitted.expiresAt && submitted.expiresAt <= now) {
+  if (expiresAt && Date.parse(expiresAt) <= Date.parse(now)) {
     return schemaRecord({
       field,
       recordedAt,
@@ -464,6 +465,20 @@ function recordEvidence(field: string, rows: EvidenceInput[], now: string): Evid
       status: "expired",
       scope: safeScopeToken(submitted.scope),
       approval: approvalKind === "ok" ? submitted.approvalReference?.trim() ?? null : null,
+    });
+  }
+  if (!claimed || !expiresAt ||
+      (submitted.recordedAt !== undefined && timestamp(submitted.recordedAt) === null) ||
+      Date.parse(recordedAt) > Date.parse(now) || Date.parse(recordedAt) >= Date.parse(expiresAt)) {
+    return schemaRecord({
+      field,
+      recordedAt,
+      expiresAt,
+      sourceType,
+      digest: claimed ? computed : "absent",
+      status: "incomplete",
+      scope: safeScopeToken(submitted.scope),
+      approval: null,
     });
   }
   const expected = EVIDENCE_SCOPES[field as EvidenceFieldId];
@@ -564,23 +579,25 @@ function decideRisk(risk: RiskInput, index: number, now: string): RiskDecision {
     requester === "ok" &&
     approver === "ok" &&
     risk.requester?.trim().toLowerCase() !== risk.approver?.trim().toLowerCase();
-  const expired = Boolean(risk.expiresAt && risk.expiresAt <= now);
+  const expiry = timestamp(risk.expiresAt);
+  const expiresAt = expiry === null ? null : risk.expiresAt!;
+  const expired = expiry !== null && expiry <= Date.parse(now);
   const productionAttempt =
     risk.bypassProduction === true || scope === "production" || scope === "staging" || scopeKind === "secret";
-  const complete = distinct && evidence === "ok" && scope === "local" && Boolean(risk.expiresAt) && !expired;
+  const complete = distinct && evidence === "ok" && scope === "local" && expiry !== null && !expired;
   if (productionAttempt || scopeKind === "fake" || evidence === "fake" || evidence === "secret") {
-    return riskRow(id, scopeKind === "ok" ? scope : "redacted", "rejected", risk.expiresAt ?? null, false, "Không mở production lock.");
+    return riskRow(id, scopeKind === "ok" ? scope : "redacted", "rejected", expiresAt, false, "Không mở production lock.");
   }
   if (!distinct || requester !== "ok" || approver !== "ok") {
-    return riskRow(id, scope === "local" ? "local" : "redacted", "rejected", risk.expiresAt ?? null, false, "Approver phải khác requester. Handle không được in.");
+    return riskRow(id, scope === "local" ? "local" : "redacted", "rejected", expiresAt, false, "Approver phải khác requester. Handle không được in.");
   }
   if (expired) {
-    return riskRow(id, "local", "expired", risk.expiresAt ?? null, distinct, "Ngoại lệ đã hết hạn.");
+    return riskRow(id, "local", "expired", expiresAt, distinct, "Ngoại lệ đã hết hạn.");
   }
   if (!complete) {
-    return riskRow(id, "redacted", "rejected", risk.expiresAt ?? null, distinct, "Thiếu scope local, hạn hoặc mã bằng chứng.");
+    return riskRow(id, "redacted", "rejected", expiresAt, distinct, "Thiếu scope local, hạn hoặc mã bằng chứng.");
   }
-  return riskRow(id, "local", "accepted", risk.expiresAt ?? null, true, "Chấp nhận local. Không bypass production.");
+  return riskRow(id, "local", "accepted", expiresAt, true, "Chấp nhận local. Không bypass production.");
 }
 
 function standingRisk(): RiskDecision {
@@ -664,26 +681,22 @@ function auditTrail(posture: "blocked" | "recorded", violations: string[], risks
   }));
 }
 
-function governanceEvidence(
-  rows: EvidenceInput[],
-  now: string,
-): Partial<Record<(typeof EVIDENCE_FIELDS)[number], string>> {
+function governanceEvidence(registry: EvidenceRecord[]): Partial<Record<(typeof EVIDENCE_FIELDS)[number], string>> {
   const evidence: Partial<Record<(typeof EVIDENCE_FIELDS)[number], string>> = {};
   for (const field of EVIDENCE_FIELDS) {
-    const row = rows.find((item) => item.field === field);
-    if (!row?.body || classify(row.body) !== "ok") continue;
-    if (row.expiresAt && row.expiresAt <= now) continue;
-    if ((row.scope?.trim().toLowerCase() ?? "") !== EVIDENCE_SCOPES[field]) continue;
-    if (classify(row.approvalReference) !== "ok") continue;
-    const sourceType = row.sourceType ?? "owner-record";
-    const body = row.body.trim();
-    const claimed = row.digest?.trim();
-    if (claimed && (!/^[a-f0-9]{64}$/i.test(claimed) || claimed.toLowerCase() !== evidenceDigest(field, sourceType, body))) {
-      continue;
-    }
-    evidence[field] = body;
+    const row = registry.find((item) => item.field === field);
+    if (row?.status === "present") evidence[field] = row.evidence_id;
   }
   return evidence;
+}
+
+/** Accept canonical UTC timestamps only; invalid dates and arbitrary metadata fail closed. */
+function timestamp(value: string | undefined): number | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return null;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  const canonical = value.includes(".") ? value : value.replace("Z", ".000Z");
+  return new Date(parsed).toISOString() === canonical ? parsed : null;
 }
 
 function present(field: string, registry: EvidenceRecord[]): boolean {

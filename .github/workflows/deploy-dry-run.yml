@@ -17,5 +17,16 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - run: >-
+          node --experimental-strip-types --test
+          src/lib/app-data/app-data.test.ts
+          src/lib/app-data/readiness-schedule.test.ts
+          src/lib/auth/gate-identity.test.ts
+          src/lib/auth/sign-in-gate.test.ts
+          src/lib/preview-path-prefix.test.ts
+          'src/luna/**/*.test.ts'
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run lint
       - run: npm run security:check
       - run: npm run deploy:dry-run

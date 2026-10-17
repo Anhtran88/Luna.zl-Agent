@@ -25,6 +25,51 @@ function localEvidence(fields: readonly string[] = SCORE_FIELDS) {
 }
 
 describe("phase 12 operations", () => {
+  it("requires supplied digests and valid expiry dates in both evidence and policy gates", () => {
+    const valid = localEvidence();
+    for (const change of [
+      { digest: undefined },
+      { expiresAt: undefined },
+      { expiresAt: "never" },
+      { expiresAt: "2027-02-30T00:00:00.000Z" },
+      { recordedAt: "not-a-timestamp" },
+      { recordedAt: "2028-01-01T00:00:00.000Z" },
+    ]) {
+      const report = assessOperations({
+        now: NOW,
+        owners: OWNERS,
+        rulesDeny: true,
+        evidence: valid.map((row) => row.field === "budget" ? { ...row, ...change } : row),
+      });
+      assert.equal(report.registry.find((row) => row.field === "budget")?.status, "incomplete");
+      assert.equal(report.registry.find((row) => row.field === "budget")?.gate, "BLOCKED");
+      assert.equal(report.compliance.find((row) => row.id === "policy-gate")?.ok, false);
+      assert.ok(report.evidenceScore < 100);
+      assert.equal(report.decision, "NO-GO");
+    }
+  });
+
+  it("uses the current clock by default instead of a frozen readiness date", (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: new Date("2028-01-01T00:00:00.000Z") });
+    const report = assessOperations({ evidence: localEvidence() });
+    assert.equal(report.evidenceScore, 0);
+    assert.equal(report.registry.find((row) => row.field === "budget")?.status, "expired");
+    assert.equal(report.registry.find((row) => row.field === "budget")?.created_at, "2028-01-01T00:00:00.000Z");
+  });
+
+  it("rejects invalid evaluation times and never echoes arbitrary timestamp metadata", () => {
+    assert.throws(() => assessOperations({ now: "invalid" }), /không hợp lệ/);
+    const sentinel = "PRIVATE_METADATA_SHOULD_NOT_LEAK";
+    const report = assessOperations({
+      now: NOW,
+      evidence: localEvidence(["budget"]).map((row) => ({ ...row, recordedAt: sentinel, expiresAt: sentinel })),
+      risks: [{ scope: "local", requester: "a", approver: "b", evidenceRef: "record-risk", expiresAt: sentinel }],
+    });
+    assert.equal(report.registry.find((row) => row.field === "budget")?.status, "incomplete");
+    assert.equal(report.registry.find((row) => row.field === "budget")?.expires_at, null);
+    assert.equal(report.risks[1]?.status, "rejected");
+    assert.equal(JSON.stringify(report).includes(sentinel), false);
+  });
   it("hashes evidence with sha256 and does not invent a shared owner", () => {
     assert.equal(
       evidenceDigest("budget", "owner-record", "abc"),

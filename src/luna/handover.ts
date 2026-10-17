@@ -26,7 +26,7 @@ function looksUnsafe(value: string): boolean {
 }
 
 export function simulateZalo(input: { action: "read" | "send"; group: "designated-bi" | "other" }): HandoverResult {
-  if (input.action === "send") return { ...LOCKED, decision: "refused", reason: "zalo-send-forbidden" };
+  if (input.action !== "read") return { ...LOCKED, decision: "refused", reason: "zalo-send-forbidden" };
   if (input.group !== "designated-bi") return { ...LOCKED, decision: "refused", reason: "zalo-group-not-designated" };
   return { ...LOCKED, decision: "simulated", reason: "zalo-read-only" };
 }
@@ -36,7 +36,7 @@ export function simulateEoffice(input: {
   action: "read" | "compare" | "edit" | "submit";
 }): HandoverResult {
   if (input.form !== "BM03.2") return { ...LOCKED, decision: "refused", reason: "eoffice-form-not-approved" };
-  if (input.action === "edit" || input.action === "submit") {
+  if (input.action !== "read" && input.action !== "compare") {
     return { ...LOCKED, decision: "refused", reason: "eoffice-mutate-forbidden" };
   }
   return { ...LOCKED, decision: "simulated", reason: "eoffice-read-compare" };
@@ -65,7 +65,7 @@ export function readHandoverStorageRoot(env: Record<string, string | undefined> 
 }
 
 function materialToken(value: string | null | undefined): string | null {
-  const ascii = (value ?? "").normalize("NFD").replace(/\p{M}/gu, "");
+  const ascii = (value ?? "").normalize("NFD").replace(/\p{M}/gu, "").replace(/[đĐ]/g, "d");
   const token = ascii.toUpperCase().replace(/[^A-Z0-9]/g, "");
   return token.length >= 2 && token.length <= 24 ? token : null;
 }
@@ -99,7 +99,8 @@ function resolveProjectAlias(input: {
   const project = input.project?.trim() ?? "";
   if (!project) return null;
   const table = input.aliases ?? PROJECT_ALIASES;
-  const mapped = table[project] ?? table[project.toLowerCase()];
+  const key = Object.hasOwn(table, project) ? project : project.toLowerCase();
+  const mapped = Object.hasOwn(table, key) ? table[key] : undefined;
   if (mapped !== undefined) return confirmedAlias(mapped);
   return confirmedAlias(project);
 }
@@ -136,7 +137,8 @@ export function planDeliveryPdf(input: {
   const raw = [input.deliveryDate, input.material, input.project, input.projectAlias]
     .filter((item): item is string => typeof item === "string")
     .join(" ");
-  if (looksUnsafe(raw) || !materialToken(input.material) || !formatDeliveryDate(input.deliveryDate) || input.attachmentCount < 1) {
+  if (looksUnsafe(raw) || !materialToken(input.material) || !formatDeliveryDate(input.deliveryDate) ||
+      !Number.isSafeInteger(input.attachmentCount) || input.attachmentCount < 1) {
     return { ...locked, decision: "ask", reason: "missing-field" };
   }
   const material = materialToken(input.material);
