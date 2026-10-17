@@ -1,4 +1,5 @@
 /** Blank owner pack. No names, secrets, URLs, or confirmation flags. */
+import { isOpaqueReference } from "./security.ts";
 
 export const ROLE_PACK = [
   { id: "requester", sod: "requester" },
@@ -57,8 +58,8 @@ export function roleBoard(
   return ROLE_PACK.map((role) => ({
     id: role.id,
     sodRole: role.sod,
-    assignee: names?.[role.id] ?? null,
-    status: collisionOk && roleOk(role.sod) ? "RECORDED" : "BLOCKED",
+    assignee: isOpaqueReference(names?.[role.id]) ? names![role.id]!.trim() : null,
+    status: collisionOk && roleOk(role.sod) && (names?.[role.id] === undefined || isOpaqueReference(names[role.id])) ? "RECORDED" : "BLOCKED",
   }));
 }
 

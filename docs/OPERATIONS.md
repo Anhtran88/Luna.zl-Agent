@@ -88,6 +88,10 @@ Preflight bắt buộc: phase lock, Firebase live tắt, 9Router live tắt, bro
 
 Health check loopback không theo redirect và có timeout 5 giây. Redirect làm kiểm tra thất bại, không chuyển sang URL đích.
 
+Preflight phải đọc được JSON rules deny-all; thiếu, lỗi JSON hoặc có grant thì fail. Yêu cầu browser launch hoặc production opt-in cũng fail. Khi preflight fail thì không gọi health, kể cả URL loopback. Health có transport chỉ được gọi cho target local; staging và production không probe.
+
+Metadata evidence/approval/role chỉ nhận mã opaque an toàn, không nhận private path hay nội dung tự do. Source type không hợp lệ bị từ chối. Proposal ngân sách `null`, sai kiểu hoặc có dịch vụ lạ không được mặc định thành $0. Scanner kiểm cả `config/`, rules thật và credential dạng JSON; bỏ lỡ file bắt buộc hoặc gặp symlink thì fail.
+
 ## Rollback
 
 Chiến lược `local-no-op`. Preflight thất bại thì process hiện tại không đổi. Không gọi hosting, không deploy rules, không publish. Muốn quay lại baseline thì dùng commit local của Phase 4 hoặc `main`. Không có thao tác remote trong rollback.

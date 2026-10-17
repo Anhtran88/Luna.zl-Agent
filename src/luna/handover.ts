@@ -85,8 +85,8 @@ function formatDeliveryDate(value: string | null | undefined): { label: string; 
   return { label: `${dd}.${mm}.${year}`, year: String(year), month: mm };
 }
 
-function confirmedAlias(value: string | null | undefined): string | null {
-  const token = value?.trim().toUpperCase() ?? "";
+function confirmedAlias(value: unknown): string | null {
+  const token = typeof value === "string" ? value.trim().toUpperCase() : "";
   return (CONFIRMED_PROJECT_ALIASES as readonly string[]).includes(token) ? token : null;
 }
 

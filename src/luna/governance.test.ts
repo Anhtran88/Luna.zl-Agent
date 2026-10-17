@@ -17,6 +17,19 @@ const FAKE_ENV = {
 };
 
 describe("phase 11 governance", () => {
+  it("rejects normalized claim flags and private references even with otherwise complete records", () => {
+    for (const claim of ["yes", " TRUE ", "ok", "confirmed"]) {
+      const report = evaluateGovernance({ env: { LUNA_BUDGET_CONFIRMED: claim }, owners: OWNERS, evidence: EVIDENCE, rulesDeny: true });
+      assert.equal(report.policy, "blocked");
+      assert.equal(report.checks.find((row) => row.id === "fake-sign-off")?.ok, false);
+      assert.equal(report.decision, "NO-GO");
+    }
+    const privatePath = "/Users/SYNTHETIC_FIXTURE/OneDrive/approval";
+    const report = evaluateGovernance({ owners: { ...OWNERS, approver: privatePath }, evidence: { ...EVIDENCE, budget: privatePath }, rulesDeny: true });
+    assert.equal(report.checks.find((row) => row.id === "owner:approver")?.ok, false);
+    assert.equal(report.checks.find((row) => row.id === "evidence:budget")?.ok, false);
+    assert.equal(JSON.stringify(report).includes(privatePath), false);
+  });
   it("blocks an empty request and does not invent one shared owner", () => {
     const report = evaluateGovernance();
     assert.equal(report.decision, "NO-GO");

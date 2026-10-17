@@ -38,6 +38,11 @@ describe("handover policy simulation", () => {
     }
     const inherited = Object.create({ demo: "SUN" }) as Record<string, string>;
     assert.equal(planDeliveryPdf({ ...NAMED, projectAlias: undefined, project: "demo", aliases: inherited }).decision, "ask");
+    for (const value of [42, null, {}, ["SUN"]]) {
+      const result = planDeliveryPdf({ ...NAMED, projectAlias: undefined, project: "demo", aliases: { demo: value } as unknown as Record<string, string> });
+      assert.equal(result.decision, "ask");
+      assert.equal(result.fileName, null);
+    }
     for (const attachmentCount of [NaN, Infinity, -1, 0, 0.5, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
       const result = planDeliveryPdf({ ...NAMED, attachmentCount });
       assert.equal(result.decision, "ask");

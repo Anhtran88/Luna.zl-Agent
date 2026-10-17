@@ -9,6 +9,10 @@ const SECRET_PATTERNS: ReadonlyArray<{ rule: string; severity: Severity; re: Reg
   { rule: "private-key", severity: "critical", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
   { rule: "private-key-field", severity: "critical", re: /"private_key"\s*:\s*"[^"]{12,}"/ },
   { rule: "api-key", severity: "high", re: /\bsk-[A-Za-z0-9]{12,}\b/ },
+  { rule: "scoped-api-key", severity: "high", re: /\bsk-(?:proj-|svcacct-)[A-Za-z0-9_-]{12,}\b/ },
+  { rule: "github-token", severity: "high", re: /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b/ },
+  { rule: "credential-field", severity: "high", re: /(?:^|[\s{,])["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|cookie)["']?\s*[=:]\s*(?:"(?:\\.|[^"\\])+"|'(?:\\.|[^'\\])+')/i },
+  { rule: "private-storage-path", severity: "high", re: /(?:[A-Z]:\\+(?:Users|OneDrive)\\+|\/Users\/[^/\s]+\/|\/home\/[^/\s]+\/OneDrive(?:\/|\b)|https?:\/\/(?:[^/\s]+\.)?(?:1drv\.ms|onedrive\.live\.com)\b)/i },
   { rule: "firebase-web-key", severity: "high", re: /\bAIza[0-9A-Za-z_-]{20,}\b/ },
   { rule: "bearer", severity: "high", re: /\bBearer\s+[A-Za-z0-9._~+/-]{12,}/i },
 ];
@@ -71,9 +75,16 @@ const REDACTORS: ReadonlyArray<[RegExp, string]> = [
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[redacted]"],
   [/"private_key"\s*:\s*"[^"]*"/g, '"private_key":"[redacted]"'],
   [/\bsk-[A-Za-z0-9]{8,}\b/g, "[redacted]"],
+  [/\bsk-(?:proj-|svcacct-)[A-Za-z0-9_-]{8,}\b/g, "[redacted]"],
+  [/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b/g, "[redacted]"],
   [/\bAIza[0-9A-Za-z_-]{10,}\b/g, "[redacted]"],
   [/\bBearer\s+[A-Za-z0-9._~+/-]{8,}/gi, "Bearer [redacted]"],
-  [/((?:api[_-]?key|token|secret|password|cookie)\s*[=:]\s*)(["']?)[^\s"',;]{6,}/gi, "$1$2[redacted]"],
+  [/((?:api[_-]?key|token|secret|password|cookie)[ \t]*[=:][ \t]*)(["']?)[^\s"',;]{6,}/gi, "$1$2[redacted]"],
+  [/(["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|cookie)["']?\s*[=:]\s*)"(?:\\.|[^"\\])*"/gi, '$1"[redacted]"'],
+  [/(["']?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|cookie)["']?\s*[=:]\s*)'(?:\\.|[^'\\])*'/gi, "$1'[redacted]'"],
+  [/(https?:\/\/)[^/\s@]+@/gi, "$1[redacted]@"],
+  [/(?:[A-Z]:\\+(?:Users|OneDrive)\\+|\/Users\/|\/home\/[^/\s]+\/OneDrive(?:\/|\b))[^\s"'<>]*/gi, "[redacted-path]"],
+  [/https?:\/\/(?:[^/\s]+\.)?(?:1drv\.ms|onedrive\.live\.com)\b[^\s"'<>]*/gi, "[redacted-path]"],
 ];
 
 export function redactAuditDetail(value: string): string {
@@ -89,7 +100,7 @@ export function containsSecret(value: string): boolean {
     pattern.re.lastIndex = 0;
     if (pattern.re.test(value)) return true;
   }
-  return /[^\s:]+:[^\s@]+@/.test(value) || /(?:api[_-]?key|token|secret|password|cookie)\s*[=:]\s*\S{6,}/i.test(value);
+  return /[^\s:]+:[^\s@]+@/.test(value) || /(?:api[_-]?key|token|secret|password|cookie)[ \t]*[=:][ \t]*\S{6,}/i.test(value);
 }
 
 export function sanitizePublicMessage(value: string): string {
@@ -98,8 +109,21 @@ export function sanitizePublicMessage(value: string): string {
   return cleaned.slice(0, 240);
 }
 
+/** Only opaque references belong in public governance metadata, never paths or prose. */
+export function isOpaqueReference(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(value.trim()) && !containsSecret(value);
+}
+
 export function scanText(path: string, text: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
+  if (/\.env(?:\.[^/]*)?$/.test(path)) {
+    for (const line of text.split(/\r?\n/)) {
+      const assignment = /^\s*([a-z_][a-z0-9_]*)\s*=\s*(.*)$/i.exec(line);
+      if (assignment && /(?:TOKEN|SECRET|PASSWORD|COOKIE|API_?KEY|SERVICE_ACCOUNT_JSON)$/i.test(assignment[1]) && assignment[2].replace(/#.*$/, "").replace(/["'\s]/g, "")) {
+        findings.push({ severity: "high", path, rule: "populated-secret-template" });
+      }
+    }
+  }
   for (const pattern of SECRET_PATTERNS) {
     pattern.re.lastIndex = 0;
     if (pattern.re.test(text)) {

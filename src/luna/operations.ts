@@ -3,7 +3,7 @@ import { evaluateMonthlySpend, type BudgetService } from "./owner-decisions.ts";
 import { EVIDENCE_FIELDS, evaluateGovernance, SOD_ROLES, type SodRole } from "./policy.ts";
 import { correlationId } from "./reliability.ts";
 import { EVIDENCE_SCOPES, roleBoard, type EvidenceFieldId, type RoleSlot } from "./readiness-pack.ts";
-import { containsSecret, evaluateLiveGate, redactAuditDetail } from "./security.ts";
+import { containsSecret, evaluateLiveGate, isOpaqueReference, redactAuditDetail } from "./security.ts";
 
 type Env = Record<string, string | undefined>;
 type Severity = "critical" | "high" | "medium" | "low";
@@ -401,9 +401,10 @@ function recordEvidence(field: string, rows: EvidenceInput[], now: string): Evid
       approval: null,
     });
   }
-  const sourceType = submitted.sourceType ?? "owner-record";
+  const sourceType = submitted.sourceType === undefined ? "owner-record" :
+    ["owner-record", "local-file", "drill"].includes(submitted.sourceType) ? submitted.sourceType : "missing";
   const kind = classify(submitted.body);
-  if (kind === "fake" || kind === "secret") {
+  if (kind === "fake" || kind === "secret" || sourceType === "missing") {
     return schemaRecord({
       field,
       recordedAt,
@@ -725,7 +726,9 @@ function evidenceDetail(row: EvidenceRecord): string {
 
 function budgetCapItem(proposed: Partial<Record<BudgetService, number>> | undefined): ChecklistItem {
   const services = ["firebase", "nineRouter", "browser"] as const;
-  const ok = services.every((service) => evaluateMonthlySpend(service, proposed?.[service] ?? 0).ok);
+  const validShape = proposed === undefined || (proposed !== null && typeof proposed === "object" && !Array.isArray(proposed));
+  const ok = validShape && Object.keys(proposed ?? {}).every((key) => (services as readonly string[]).includes(key)) &&
+    services.every((service) => evaluateMonthlySpend(service, proposed && Object.hasOwn(proposed, service) ? proposed[service]! : 0).ok);
   return item(
     "budget-cap",
     ok,
@@ -760,10 +763,11 @@ function roleDetail(role: string, kind: "missing" | "fake" | "secret" | "ok"): s
 }
 
 function classify(value: string | undefined): "missing" | "fake" | "secret" | "ok" {
+  if (value !== undefined && typeof value !== "string") return "secret";
   const text = value?.trim() ?? "";
   if (!text) return "missing";
   if (FAKE_VALUES.has(text.toLowerCase())) return "fake";
-  if (containsSecret(text) || /^https?:\/\//i.test(text)) return "secret";
+  if (!isOpaqueReference(text)) return "secret";
   return "ok";
 }
 

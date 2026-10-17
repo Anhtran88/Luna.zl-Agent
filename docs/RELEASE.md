@@ -53,4 +53,4 @@ npm run production:check
 | Zalo/eOffice policy | missing | không |
 | Legal/privacy | missing | không |
 
-Không ghi tên người thật. Cờ môi trường `true` chỉ đổi trạng thái thành claimed và vẫn không cấp quyền deploy.
+Không ghi tên người thật. Cờ môi trường `true` chỉ đổi trạng thái thành claimed; owner gate vẫn fail và `signOffComplete` vẫn false. Artifact chỉ hợp lệ khi cả hai hash là SHA-256 đủ 64 ký tự hex và khớp nhau. Không cấp quyền deploy.

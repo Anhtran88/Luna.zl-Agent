@@ -219,7 +219,7 @@ export function summarizeStaging(report: StagingReport): StagingSummary {
 function flag(checks: StagingCheck[], env: Env, id: string, key: string, severity: Severity): void {
   checks.push(
     env[key] === "true"
-      ? check(id, true, severity, `${key} đã được ghi nhận. Cờ này không deploy.`)
+      ? check(id, false, severity, `${key} chỉ là lời ghi nhận, không phải bằng chứng. Gate vẫn chặn.`)
       : check(id, false, severity, `Thiếu ${key}.`),
   );
 }

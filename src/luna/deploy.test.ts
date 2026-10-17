@@ -20,6 +20,7 @@ const LOCAL_ENV = {
   FIREBASE_SERVICE_ACCOUNT_JSON: "",
   NINE_ROUTER_API_KEY: "",
 };
+const DENY_FILES = { "firebase/database.rules.json": JSON.stringify({ rules: { ".read": false, ".write": false } }) };
 
 describe("phase 5 deploy dry-run", () => {
   it("never follows a health redirect, even to a second loopback path", async () => {
@@ -39,6 +40,7 @@ describe("phase 5 deploy dry-run", () => {
       assert.ok(address && typeof address !== "string");
       const report = await dryRunDeploy({
         env: LOCAL_ENV,
+        files: DENY_FILES,
         healthUrl: `http://127.0.0.1:${address.port}/health`,
         fetchImpl: globalThis.fetch,
       });
@@ -51,7 +53,7 @@ describe("phase 5 deploy dry-run", () => {
     }
   });
   it("passes a local dry-run when secrets are missing and live flags are off", async () => {
-    const report = await dryRunDeploy({ env: LOCAL_ENV, files: { "README.md": "no secrets" } });
+    const report = await dryRunDeploy({ env: LOCAL_ENV, files: { ...DENY_FILES, "README.md": "no secrets" } });
     assert.equal(report.ok, true);
     assert.equal(report.mode, "dry-run");
     assert.equal(report.target, "local");
@@ -151,7 +153,8 @@ describe("phase 5 deploy dry-run", () => {
   it("probes only an injected loopback health check and records rollback", async () => {
     let calls = 0;
     const report = await dryRunDeploy({
-      env: { ...LOCAL_ENV, LUNA_DEPLOY_TARGET: "staging", LUNA_STAGING_URL: "http://127.0.0.1:9090" },
+      env: LOCAL_ENV,
+      files: DENY_FILES,
       healthUrl: "http://127.0.0.1:8080/",
       fetchImpl: async (input) => {
         calls += 1;
@@ -167,5 +170,44 @@ describe("phase 5 deploy dry-run", () => {
     assert.equal(planRollback().mutatesProduction, false);
     assert.equal(describeDeployPosture({}).target, "local");
     assert.equal(describeDeployPosture({}).blocked, false);
+  });
+
+  it("requires deny-all proof, rejects browser launch and production opt-in, and does not probe on refusal", async () => {
+    for (const input of [
+      { files: undefined, env: LOCAL_ENV },
+      { files: { "firebase/database.rules.json": "not-json" }, env: LOCAL_ENV },
+      { files: { "firebase/database.rules.json": JSON.stringify({ rules: { ".read": true, ".write": true } }) }, env: LOCAL_ENV },
+      { files: DENY_FILES, env: { ...LOCAL_ENV, LUNA_BROWSER_LAUNCH: "true" } },
+      { files: DENY_FILES, env: { ...LOCAL_ENV, LUNA_DEPLOY_PRODUCTION_OPT_IN: "true" } },
+    ]) {
+      let calls = 0;
+      const report = await dryRunDeploy({ ...input, healthUrl: "http://127.0.0.1:8080", fetchImpl: async () => {
+        calls += 1;
+        return new Response("ok");
+      } });
+      assert.equal(report.ok, false);
+      assert.equal(calls, 0);
+    }
+    assert.equal(describeDeployPosture({ LUNA_BROWSER_LAUNCH: "true" }).blocked, true);
+    assert.equal(describeDeployPosture({ LUNA_DEPLOY_PRODUCTION_OPT_IN: "true" }).blocked, true);
+  });
+
+  it("never probes staging and does not echo an invalid target or private artifact label", async () => {
+    let calls = 0;
+    const report = await dryRunDeploy({
+      env: { ...LOCAL_ENV, LUNA_DEPLOY_TARGET: "staging" },
+      files: DENY_FILES,
+      healthUrl: "http://127.0.0.1:8080",
+      artifactPresent: true,
+      artifactLabel: "PRIVATE_ARTIFACT_LABEL_SHOULD_NOT_LEAK",
+      fetchImpl: async () => { calls += 1; return new Response("ok"); },
+    });
+    assert.equal(report.ok, true);
+    assert.equal(report.health.status, "skipped");
+    assert.equal(calls, 0);
+    assert.equal(JSON.stringify(report).includes("PRIVATE_ARTIFACT_LABEL_SHOULD_NOT_LEAK"), false);
+    const invalid = await dryRunDeploy({ env: { LUNA_DEPLOY_TARGET: "PRIVATE_TARGET_SHOULD_NOT_LEAK" }, files: DENY_FILES });
+    assert.equal(invalid.ok, false);
+    assert.equal(JSON.stringify(invalid).includes("PRIVATE_TARGET_SHOULD_NOT_LEAK"), false);
   });
 });

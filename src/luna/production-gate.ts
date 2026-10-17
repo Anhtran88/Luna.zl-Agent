@@ -126,9 +126,9 @@ export function assessProduction(input: ProductionInput = {}): ProductionReport 
     checks.push(
       check(
         row.id,
-        claimed,
+        false,
         row.severity,
-        claimed ? `${row.env} chỉ là lời ghi nhận, không cấp quyền deploy.` : `Thiếu ${row.env}.`,
+        claimed ? `${row.env} chỉ là lời ghi nhận, không phải sign-off. Gate vẫn chặn.` : `Thiếu ${row.env}.`,
       ),
     );
   }
@@ -180,7 +180,9 @@ export function assessProduction(input: ProductionInput = {}): ProductionReport 
 
   if (!input.artifact) {
     checks.push(check("artifact", false, "high", "Chưa có hash artifact. Không tạo hash giả."));
-  } else if (input.artifact.sha256 !== input.artifact.expectedSha256) {
+  } else if (!/^[a-f0-9]{64}$/i.test(input.artifact.sha256) ||
+      !/^[a-f0-9]{64}$/i.test(input.artifact.expectedSha256) ||
+      input.artifact.sha256.toLowerCase() !== input.artifact.expectedSha256.toLowerCase()) {
     checks.push(check("artifact", false, "high", "Hash artifact không khớp. Hash không được in."));
   } else {
     checks.push(check("artifact", true, "high", "Hash artifact khớp. Không upload."));

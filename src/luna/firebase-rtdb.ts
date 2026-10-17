@@ -30,15 +30,11 @@ export function isOfficialFirebaseHost(host: string): boolean {
   return FIREBASE_HOST.test(host);
 }
 
-export type FirebaseConnectDecision =
-  | { ok: false; reason: string }
-  | { ok: true; databaseUrl: string; authToken: string; transport: RtdbTransport };
+export type FirebaseConnectDecision = { ok: false; reason: string };
 
 /**
- * Live REST is reachable only when the caller passes both an official database
- * URL and an in-memory token plus a transport. Service-account JSON is not a
- * REST token and is rejected. Missing any piece stays locked and does not call
- * the transport.
+ * Diagnose missing REST prerequisites without authorizing live access. Even a
+ * complete credential/transport pair stays phase-locked and is never called.
  */
 export function evaluateFirebaseConnect(
   config: FirebasePublicConfig,
@@ -60,12 +56,7 @@ export function evaluateFirebaseConnect(
   if (token.startsWith("{") || token.includes("PRIVATE")) {
     return { ok: false, reason: "service-account-is-not-a-rest-token" };
   }
-  return {
-    ok: true,
-    databaseUrl: config.databaseUrl,
-    authToken: token,
-    transport: connect.transport,
-  };
+  return { ok: false, reason: "phase-lock" };
 }
 
 function redact(message: string, token: string): string {
@@ -126,6 +117,11 @@ export class FirebaseRtdbClient implements RealtimeDatabase {
 
   private async call(method: RtdbTransportRequest["method"], path: string, body?: unknown): Promise<unknown> {
     assertFirebasePath(path);
+    const origin = new URL(this.databaseUrl);
+    if (origin.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(origin.hostname) ||
+        origin.username || origin.password || origin.search || origin.hash) {
+      throw new LunaError("NETWORK", "REST contract chỉ dùng loopback cho mô phỏng. Firebase live vẫn khóa.");
+    }
     const url = new URL(`${this.databaseUrl}${path}.json`);
     url.searchParams.set("auth", this.authToken);
     let response: RtdbTransportResponse;

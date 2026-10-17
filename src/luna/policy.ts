@@ -1,6 +1,6 @@
 import { unexpectedEndpointKey } from "./deploy.ts";
 import { correlationId } from "./reliability.ts";
-import { containsSecret, evaluateLiveGate, redactAuditDetail } from "./security.ts";
+import { containsSecret, evaluateLiveGate, isOpaqueReference, redactAuditDetail } from "./security.ts";
 
 type Env = Record<string, string | undefined>;
 type Severity = "critical" | "high" | "medium" | "low";
@@ -106,7 +106,7 @@ export function evaluateGovernance(input: GovernanceInput = {}): GovernanceRepor
   const evidence = input.evidence ?? {};
   const usable = new Map<SodRole, string>();
 
-  const fakes = FAKE_FLAGS.filter((key) => env[key] === "true");
+  const fakes = FAKE_FLAGS.filter((key) => ["true", "yes", "ok", "confirmed"].includes(env[key]?.trim().toLowerCase() ?? ""));
   checks.push(
     fakes.length === 0
       ? check("fake-sign-off", true, "critical", "Không có cờ xác nhận được dùng làm bằng chứng.")
@@ -195,10 +195,11 @@ export function summarizeGovernance(report: GovernanceReport): GovernanceSummary
 }
 
 function classify(value: string | undefined): "missing" | "fake" | "secret" | "ok" {
+  if (value !== undefined && typeof value !== "string") return "secret";
   const text = value?.trim() ?? "";
   if (!text) return "missing";
   if (FAKE_VALUES.has(text.toLowerCase())) return "fake";
-  if (containsSecret(text) || /^https?:\/\//i.test(text)) return "secret";
+  if (!isOpaqueReference(text)) return "secret";
   return "ok";
 }
 

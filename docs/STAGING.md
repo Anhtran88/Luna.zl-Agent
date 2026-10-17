@@ -2,7 +2,7 @@
 
 Quyết định staging hiện tại: **NO-GO**. Production ở Phase 9 cũng là **NO-GO**. Không deploy staging có mạng và không deploy production. Xem [RELEASE.md](RELEASE.md).
 
-`LOCAL-REHEARSAL-ONLY` chỉ xuất hiện khi mọi cổng dưới đây đều pass và URL là loopback. Trạng thái đó vẫn là dry-run: `executed: false`, `networkDeploy: false`, chi phí $0.
+Cờ môi trường không phải proof: điền hết cờ `true` vẫn giữ **NO-GO**. API kiểm staging hiện chỉ có lời khai, chưa nhận bằng chứng đã xác thực để đóng các owner gates. Kết quả luôn giữ `executed: false`, `networkDeploy: false`, chi phí $0.
 
 ```bash
 npm run staging:check
@@ -34,7 +34,7 @@ Dừng ở NO-GO nếu thiếu bất kỳ điều kiện nào:
 | Smoke | kết quả local được ghi nhận | Medium |
 | Rollback | `local-no-op`, không gọi hosting | High |
 
-Cờ `true` chỉ là lời ghi nhận. Nó không mở socket, không cấp quyền và không deploy.
+Cờ `true` chỉ là lời ghi nhận và owner gate vẫn fail. Nó không mở socket, không cấp quyền và không deploy.
 
 ## Mẫu cấu hình
 

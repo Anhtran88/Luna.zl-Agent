@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { scanText, type SecurityFinding } from "./security.ts";
+import { rulesDenyByDefault, scanText, type SecurityFinding } from "./security.ts";
 
 const ROOTS = ["src", "server", "scripts", "docs", "firebase", "config", ".github"];
 const FILES = [
@@ -13,6 +13,7 @@ const FILES = [
   ".env.example",
 ];
 const SKIP = new Set(["node_modules", "dist", ".vercel", ".git", "screenshots", ".output"]);
+const findings: SecurityFinding[] = [];
 
 function skipFile(path: string): boolean {
   return path.endsWith(".test.ts") || path.endsWith(".test.mjs") || path.endsWith(".test.tsx");
@@ -21,15 +22,21 @@ function skipFile(path: string): boolean {
 function walk(dir: string, out: string[]): void {
   let entries: string[] = [];
   try {
+    if (lstatSync(dir).isSymbolicLink()) {
+      findings.push({ severity: "high", path: dir, rule: "scan-symlink-not-followed" });
+      return;
+    }
     entries = readdirSync(dir);
   } catch {
+    findings.push({ severity: "high", path: dir, rule: "scan-unreadable" });
     return;
   }
   for (const entry of entries) {
     if (SKIP.has(entry)) continue;
     const path = join(dir, entry);
-    const stat = statSync(path);
-    if (stat.isDirectory()) walk(path, out);
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) findings.push({ severity: "high", path, rule: "scan-symlink-not-followed" });
+    else if (stat.isDirectory()) walk(path, out);
     else if (!skipFile(path)) out.push(path);
   }
 }
@@ -38,12 +45,26 @@ const paths: string[] = [];
 for (const root of ROOTS) walk(root, paths);
 for (const file of FILES) paths.push(file);
 
-const findings: SecurityFinding[] = [];
+try {
+  if (lstatSync("firebase").isSymbolicLink() || lstatSync("firebase/database.rules.json").isSymbolicLink()) {
+    throw new Error("Rules proof must not follow a symlink.");
+  }
+  if (!rulesDenyByDefault(JSON.parse(readFileSync("firebase/database.rules.json", "utf8")))) {
+    findings.push({ severity: "critical", path: "firebase/database.rules.json", rule: "firebase-rules-not-deny-all" });
+  }
+} catch {
+  findings.push({ severity: "critical", path: "firebase/database.rules.json", rule: "firebase-rules-unreadable" });
+}
 for (const path of paths) {
   let text = "";
   try {
+    if (lstatSync(path).isSymbolicLink()) {
+      findings.push({ severity: "high", path, rule: "scan-symlink-not-followed" });
+      continue;
+    }
     text = readFileSync(path, "utf8");
   } catch {
+    findings.push({ severity: "high", path, rule: "scan-unreadable" });
     continue;
   }
   findings.push(...scanText(path, text));

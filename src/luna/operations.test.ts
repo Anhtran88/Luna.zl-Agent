@@ -25,6 +25,34 @@ function localEvidence(fields: readonly string[] = SCORE_FIELDS) {
 }
 
 describe("phase 12 operations", () => {
+  it("rejects invalid monthly proposals instead of silently defaulting them to zero", () => {
+    for (const proposedSpend of [null, [], { firebase: null }, { firebase: NaN }, { firebase: 2 }, { Firebase: 2 }]) {
+      const report = assessOperations({ proposedSpend: proposedSpend as unknown as { firebase: number } });
+      assert.equal(report.checklist.find((row) => row.id === "budget-cap")?.ok, false);
+      assert.equal(report.decision, "NO-GO");
+      assert.equal(report.estimatedUsd, 0);
+      assert.equal(report.networkCalls, 0);
+    }
+    const valid = assessOperations({ proposedSpend: { firebase: 1, nineRouter: 1, browser: 1 } });
+    assert.equal(valid.checklist.find((row) => row.id === "budget-cap")?.ok, true);
+    assert.equal(valid.decision, "NO-GO");
+  });
+
+  it("keeps private paths and unknown source metadata out of evidence and role output", () => {
+    const privatePath = "/Users/SYNTHETIC_FIXTURE/OneDrive/private-approval";
+    const valid = localEvidence(["budget"]);
+    for (const evidence of [
+      valid.map((row) => ({ ...row, approvalReference: privatePath })),
+      valid.map((row) => ({ ...row, sourceType: privatePath as "owner-record" })),
+    ]) {
+      const report = assessOperations({ now: NOW, owners: OWNERS, evidence, roleNames: { requester: privatePath } });
+      assert.equal(report.registry.find((row) => row.field === "budget")?.status, "rejected");
+      assert.equal(report.roles.find((row) => row.id === "requester")?.assignee, null);
+      assert.equal(report.roles.find((row) => row.id === "requester")?.status, "BLOCKED");
+      assert.equal(JSON.stringify(report).includes(privatePath), false);
+      assert.equal(JSON.stringify(report).includes("SYNTHETIC_FIXTURE"), false);
+    }
+  });
   it("requires supplied digests and valid expiry dates in both evidence and policy gates", () => {
     const valid = localEvidence();
     for (const change of [

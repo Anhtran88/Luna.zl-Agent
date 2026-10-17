@@ -65,7 +65,7 @@ Router tương thích cách đặt tên của 9Router:
 `RealtimeDatabase` có `get`, `set`, `push`, `update`, `remove`, `listen`.
 
 - `MemoryRealtimeDatabase` là mặc định cho local và test, kể cả khi URL project đã được khai báo.
-- `PhaseLockedFirebaseAdapter` được chọn khi `FIREBASE_LIVE_ENABLED=true` hoặc alias `LUNA_FIREBASE_LIVE=true` nhưng thiếu URL https chính thức, REST credential, hoặc transport. Không mở socket.
+- `PhaseLockedFirebaseAdapter` được chọn khi `FIREBASE_LIVE_ENABLED=true` hoặc alias `LUNA_FIREBASE_LIVE=true`, kể cả khi có URL, REST credential và transport. Không mở socket. REST contract riêng chỉ nhận HTTP loopback cho mô phỏng; URL Firebase thật bị chặn trước khi gọi transport.
 - Project công khai đã ghi nhận: `lunazl-agent`, URL `https://lunazl-agent-default-rtdb.asia-southeast1.firebasedatabase.app`. Đây không phải secret.
 - Rules mẫu deny `.read` và `.write`. Không deploy và không mở public access.
 - Config công khai chỉ chứa host, project id và cờ `credentialConfigured`. Giá trị secret không được copy vào object trả về.

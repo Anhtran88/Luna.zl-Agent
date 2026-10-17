@@ -7,6 +7,7 @@ import { dryRunDeploy } from "./deploy.ts";
 import { TASK_PRESETS } from "./presets.ts";
 import {
   LocalRateLimiter,
+  containsSecret,
   SECURITY_HEADERS,
   SECURITY_POSTURE,
   SESSION_COOKIE_POSTURE,
@@ -23,6 +24,28 @@ const PEM = `-----BEGIN PRIVATE KEY-----\n${"A".repeat(40)}\n-----END PRIVATE KE
 const API_KEY = "sk-notarealkey123456";
 
 describe("phase 6 security", () => {
+  it("detects and fully redacts JSON credentials, scoped API keys, GitHub tokens, and private paths", () => {
+    const cases = [
+      { text: JSON.stringify({ password: "synthetic pass with spaces" }), hidden: "synthetic pass with spaces" },
+      { text: JSON.stringify({ token: "synthetic-token-value" }), hidden: "synthetic-token-value" },
+      { text: "api_key='synthetic pass with spaces'", hidden: "synthetic pass with spaces" },
+      { text: "sk-proj-SYNTHETIC_NOT_A_REAL_KEY_0123456789", hidden: "SYNTHETIC_NOT_A_REAL_KEY_0123456789" },
+      { text: "ghp_SYNTHETICNOTAREALTOKEN0123456789", hidden: "SYNTHETICNOTAREALTOKEN0123456789" },
+      { text: "/Users/SYNTHETIC_FIXTURE/OneDrive/private.pdf", hidden: "SYNTHETIC_FIXTURE" },
+      { text: JSON.stringify({ path: "C:\\Users\\SYNTHETIC_FIXTURE\\OneDrive\\private.pdf" }), hidden: "SYNTHETIC_FIXTURE" },
+      { text: "https://synthetic-user:synthetic-pass@example.invalid/path", hidden: "synthetic-pass" },
+    ];
+    for (const { text, hidden } of cases) {
+      assert.equal(containsSecret(text), true);
+      assert.equal(redactAuditDetail(text).includes(hidden), false);
+      assert.equal(sanitizePublicMessage(text).includes(hidden), false);
+      assert.ok(scanText("fixture.json", text).some((finding) => finding.severity === "high"));
+    }
+    assert.throws(() => parseCreateTaskInput({ goal: JSON.stringify({ password: "synthetic-pass" }) }));
+    assert.ok(scanText("config/production.env.example", "NINE_ROUTER_API_KEY=SYNTHETIC_VALUE").some((row) => row.rule === "populated-secret-template"));
+    assert.equal(containsSecret("URL public, không phải secret:\n\n`https://example.invalid`"), false);
+    assert.equal(containsSecret('{"password":\n"synthetic-pass"}'), true);
+  });
   it("detects secrets and url credentials without returning the value", () => {
     const findings = scanText("fixture.txt", `${PEM}\n${API_KEY}\nhttps://user:secret@evil.example/path?token=abc`);
     assert.ok(findings.some((finding) => finding.rule === "private-key" && finding.severity === "critical"));

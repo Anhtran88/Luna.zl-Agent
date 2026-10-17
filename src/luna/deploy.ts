@@ -1,7 +1,8 @@
 import { PHASE4_ADAPTERS, browserContractsLocked } from "./adapters.ts";
+import { BROWSER_CONTRACTS } from "./browser.ts";
 import { LUNAZL_FIREBASE_DATABASE_URL } from "./config.ts";
 import { LUNA_RELEASE } from "./domain.ts";
-import { preflightAudit, type SecurityAuditRecord } from "./security.ts";
+import { containsSecret, evaluateLiveGate, preflightAudit, rulesDenyByDefault, type SecurityAuditRecord } from "./security.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -66,6 +67,7 @@ const SECRET_ENV_KEYS = [
   "FIREBASE_SERVICE_ACCOUNT_JSON",
   "NINE_ROUTER_API_KEY",
   "FIREBASE_AUTH_TOKEN",
+  "LUNA_BROWSER_COOKIE",
 ] as const;
 
 const ENDPOINT_KEYS = [
@@ -75,13 +77,6 @@ const ENDPOINT_KEYS = [
   "VERCEL_URL",
   "DEPLOY_URL",
 ] as const;
-
-const SECRET_PATTERNS: ReadonlyArray<{ id: string; re: RegExp }> = [
-  { id: "private-key", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
-  { id: "api-key", re: /\bsk-[A-Za-z0-9]{16,}\b/ },
-  { id: "firebase-web-key", re: /\bAIza[0-9A-Za-z_-]{20,}\b/ },
-  { id: "long-private-key-field", re: /"private_key"\s*:\s*"[^"]{40,}"/ },
-];
 
 export function isLoopbackUrl(raw: string): boolean {
   let url: URL;
@@ -104,7 +99,7 @@ export function readDeployTarget(raw: string | undefined): {
   if (requested === "local" || requested === "staging" || requested === "production") {
     return { target: requested, requested, invalid: false };
   }
-  return { target: "local", requested, invalid: true };
+  return { target: "local", requested: "invalid", invalid: true };
 }
 
 function firebaseLiveRequested(env: Env): boolean {
@@ -135,8 +130,7 @@ export function describeDeployPosture(env: Env): DeployPosture {
   const blocked =
     read.invalid ||
     read.target === "production" ||
-    firebaseLiveRequested(env) ||
-    env.LUNA_ALLOW_LIVE_MODELS === "true" ||
+    evaluateLiveGate(env).violations.length > 0 ||
     unexpectedEndpointKey(env) !== null ||
     populatedSecretKeys(env).length > 0;
   return {
@@ -165,9 +159,7 @@ export function planRollback(): RollbackPlan {
 function scanFiles(files: Record<string, string>): PreflightCheck {
   const hits: string[] = [];
   for (const [path, text] of Object.entries(files)) {
-    for (const pattern of SECRET_PATTERNS) {
-      if (pattern.re.test(text)) hits.push(`${path}:${pattern.id}`);
-    }
+    if (containsSecret(text)) hits.push(path);
   }
   if (hits.length === 0) {
     return { id: "secrets", ok: true, detail: "Không thấy private key hay API key trong file đã quét." };
@@ -175,7 +167,7 @@ function scanFiles(files: Record<string, string>): PreflightCheck {
   return {
     id: "secrets",
     ok: false,
-    detail: `Phát hiện mẫu secret, giá trị không được in: ${hits.join(", ")}.`,
+    detail: `Phát hiện mẫu secret trong ${hits.length} file. Không in đường dẫn hay giá trị.`,
   };
 }
 
@@ -266,7 +258,8 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
   );
 
   const browsersLocked =
-    browserContractsLocked().length > 0 &&
+    !evaluateLiveGate(env).violations.includes("browser-launch") &&
+    browserContractsLocked().length > 0 && browserContractsLocked().length === BROWSER_CONTRACTS.length &&
     PHASE4_ADAPTERS.every((adapter) => adapter.liveEnabled === false && adapter.network === false);
   checks.push({
     id: "browser-launch",
@@ -308,7 +301,7 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
 
   checks.push(scanFiles(input.files ?? {}));
 
-  if (read.target === "production") {
+  if (read.target === "production" || env.LUNA_DEPLOY_PRODUCTION_OPT_IN === "true") {
     const optedIn = env.LUNA_DEPLOY_PRODUCTION_OPT_IN === "true";
     checks.push({
       id: "production-opt-in",
@@ -329,10 +322,16 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
     });
   }
 
+  let rulesDeny = false;
+  try {
+    rulesDeny = rulesDenyByDefault(JSON.parse(input.files?.["firebase/database.rules.json"] ?? "null"));
+  } catch {
+    // Missing or invalid proof is not deny-all evidence.
+  }
   checks.push({
     id: "firebase-rules",
-    ok: true,
-    detail: "Không deploy rules. Không mở read/write public.",
+    ok: rulesDeny,
+    detail: rulesDeny ? "Rules đã kiểm deny-all. Không deploy." : "Thiếu rules deny-all hợp lệ. Không deploy.",
   });
 
   if (input.artifactPresent === undefined) {
@@ -345,7 +344,7 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
     checks.push({
       id: "artifact",
       ok: true,
-      detail: `Artifact local ${input.artifactLabel ?? "unnamed"} chỉ được kiểm tra. Không upload.`,
+      detail: "Artifact local chỉ được kiểm tra. Không in đường dẫn và không upload.",
     });
   } else {
     checks.push({
@@ -355,7 +354,12 @@ export async function dryRunDeploy(input: DryRunInput): Promise<DeployDryRunRepo
     });
   }
 
-  const health = await probeHealth(input.healthUrl, input.fetchImpl);
+  const preflightBlocked = checks.some((check) => !check.ok);
+  const health: HealthCheck = preflightBlocked
+    ? { status: "refused", network: false, detail: "Preflight bị chặn. Không gọi health check." }
+    : read.target !== "local"
+      ? { status: "skipped", network: false, detail: "Staging và production không gọi health check." }
+      : await probeHealth(input.healthUrl, input.fetchImpl);
   if (health.status === "refused" || health.status === "local-failed") {
     checks.push({ id: "health", ok: false, detail: health.detail });
   } else {

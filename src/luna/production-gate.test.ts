@@ -24,7 +24,7 @@ const CLAIMS = {
 const LOCAL_EVIDENCE = {
   rulesDeny: true,
   schemaVersion: 1,
-  artifact: { sha256: "abc", expectedSha256: "abc" },
+  artifact: { sha256: "a".repeat(64), expectedSha256: "a".repeat(64) },
   sbom: { directDependencies: 10, lockfilePresent: true },
   backup: { restoreDrill: true },
 };
@@ -65,13 +65,23 @@ describe("phase 9 production gate", () => {
     assert.equal(calls, 0);
     assert.equal(report.decision, "NO-GO");
     assert.equal(report.authorization, "not-granted");
-    assert.equal(report.signOffComplete, true);
+    assert.equal(report.signOffComplete, false);
+    assert.equal(report.checks.find((row) => row.id === "budget")?.ok, false);
     assert.equal(report.networkDeploy, false);
     assert.equal(report.productionDeployed, false);
     assert.equal(report.rulesDeployed, false);
     assert.ok(report.blockers.some((item) => item.id === "production-health"));
     assert.ok(report.blockers.some((item) => item.id === "production-alerting"));
     assert.ok(report.signOff.every((row) => row.status === "claimed" && row.authorizesDeploy === false));
+  });
+
+  it("never treats matching blank or malformed hashes as artifact proof", () => {
+    for (const hash of ["", "abc", "z".repeat(64)]) {
+      const report = assessProduction({ artifact: { sha256: hash, expectedSha256: hash } });
+      assert.equal(report.checks.find((row) => row.id === "artifact")?.ok, false);
+      assert.equal(report.signOffComplete, false);
+      assert.equal(report.decision, "NO-GO");
+    }
   });
 
   it("blocks live bypass, bad schema, artifact mismatch, secrets, and public endpoints", () => {

@@ -67,13 +67,14 @@ describe("phase 8 staging readiness", () => {
       artifactPresent: true,
       smokeOk: true,
     });
-    assert.equal(report.decision, "LOCAL-REHEARSAL-ONLY");
+    assert.equal(report.decision, "NO-GO");
     assert.equal(report.mode, "dry-run");
     assert.equal(report.executed, false);
     assert.equal(report.networkDeploy, false);
     assert.equal(report.productionDeployed, false);
     assert.equal(report.rulesDeployed, false);
-    assert.equal(report.blockers.length, 0);
+    assert.equal(report.blockers.some((row) => row.id === "budget"), true);
+    assert.equal(report.blockers.some((row) => row.id === "environment-owner"), true);
     assert.equal(report.probes.production, "NO-GO");
   });
 
