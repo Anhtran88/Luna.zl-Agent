@@ -183,7 +183,7 @@ export function evaluateLiveGate(env: Record<string, string | undefined>): {
   violations: string[];
 } {
   const violations: string[] = [];
-  if (env.FIREBASE_LIVE_ENABLED === "true" || env.LUNA_FIREBASE_LIVE === "true") {
+  if (env.FIREBASE_LIVE_ENABLED === "true" || env.LUNA_FIREBASE_LIVE === "true" || env.STAGING_FIREBASE_LIVE_ENABLED === "true") {
     violations.push("firebase-live");
   }
   if (env.LUNA_ALLOW_LIVE_MODELS === "true") violations.push("nine-router-live");

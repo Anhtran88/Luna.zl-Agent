@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { runOperatorCommand } from "../authorization.ts";
 import { LunaControlPlane } from "../control-plane.ts";
 import { LunaError, type CommandResult } from "../domain.ts";
 import { guardLocalRequest, parseCreateTaskInput, redactAuditDetail } from "../security.ts";
@@ -87,11 +88,16 @@ export const decideApprovalFn = createServerFn({ method: "POST" })
     guardLocalRequest("decide-approval");
     const approvalId = readId(body, "approvalId", /^approval_[\w-]+$/);
     const decision = approvalDecision(body.decision);
-    const note = typeof body.note === "string" ? redactAuditDetail(body.note).slice(0, 280) : undefined;
+    const note =
+      typeof body.note === "string" ? redactAuditDetail(body.note).slice(0, 280) : undefined;
     return { approvalId, decision, note };
   })
   .handler(async ({ data }) => {
-    return run((current) => current.decideApproval(data.approvalId, data.decision, data.note));
+    return run((current) =>
+      runOperatorCommand(current, "approval", () =>
+        current.decideApproval(data.approvalId, data.decision, data.note),
+      ),
+    );
   });
 
 export const executeTaskFn = createServerFn({ method: "POST" })
@@ -99,7 +105,9 @@ export const executeTaskFn = createServerFn({ method: "POST" })
     guardLocalRequest("execute-task");
     return { taskId: readId(input, "taskId", /^task_[\w-]+$/) };
   })
-  .handler(async ({ data }) => run((current) => current.execute(data.taskId)));
+  .handler(async ({ data }) =>
+    run((current) => runOperatorCommand(current, "execute", () => current.execute(data.taskId))),
+  );
 
 export const cancelTaskFn = createServerFn({ method: "POST" })
   .validator((input: unknown) => {

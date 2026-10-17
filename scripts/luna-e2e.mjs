@@ -91,77 +91,67 @@ try {
     ["mobile", 390, 844],
   ]) {
     await browser("set", "viewport", String(width), String(height));
-    for (const decision of ["approved", "rejected", "cancelled"]) {
+    for (const decision of ["approval-denied", "reject-denied", "execute-denied"]) {
       const marker = `E2E-${randomUUID().slice(0, 8)}`;
-      await browser("fill", "#goal", `${marker}: Ghi Firebase bằng mô phỏng, không gọi mạng.`);
+      const safe = decision === "execute-denied";
+      await browser(
+        "fill",
+        "#goal",
+        `${marker}: ${safe ? "Tóm tắt bằng model mock." : "Ghi Firebase bằng mô phỏng, không gọi mạng."}`,
+      );
       await click("Tạo tác vụ");
       await wait(
         `${detail}?.dataset.taskStatus === "draft" && ${detail}?.textContent.includes(${JSON.stringify(marker)})`,
       );
       const taskId = await read(`${detail}.dataset.taskId`);
       await click("Lập kế hoạch");
-      await wait(`${detail}?.dataset.taskStatus === "awaiting_approval"`);
-      assert.equal(
-        await read(disabled("Chạy dry-run")),
-        true,
-        "Execution must be disabled before approval.",
+      const plannedStatus = safe ? "planned" : "awaiting_approval";
+      await wait(`${detail}?.dataset.taskStatus === ${JSON.stringify(plannedStatus)}`);
+      if (!safe) assert.equal(await read(disabled("Chạy dry-run")), true);
+      await click(
+        safe ? "Chạy dry-run" : decision === "approval-denied" ? "Duyệt dry-run" : "Từ chối",
       );
-      if (decision === "approved") {
-        await click("Duyệt dry-run");
-        await wait(`${detail}?.dataset.taskStatus === "approved"`);
-        await click("Chạy dry-run");
-        await wait(`${detail}?.dataset.taskStatus === "dry_run_completed"`);
-      } else {
-        await click(decision === "rejected" ? "Từ chối" : "Hủy");
-        await wait(`${detail}?.dataset.taskStatus === ${JSON.stringify(decision)}`);
-      }
+      await wait('document.body.innerText.includes("Chưa có xác thực operator đáng tin cậy")');
       assert.equal(
-        await read(disabled("Chạy dry-run")),
-        true,
-        "Terminal tasks must not execute again.",
+        await read(`${detail}.dataset.taskStatus`),
+        plannedStatus,
+        "Denied commands must not change task state.",
       );
+      await click("Hủy");
+      await wait(`${detail}?.dataset.taskStatus === "cancelled"`);
+      assert.equal(await read(disabled("Chạy dry-run")), true);
       assert.equal(
         await read(
           'Array.from(document.querySelectorAll("button")).some(b => ["Duyệt dry-run", "Từ chối"].includes(b.textContent.trim()))',
         ),
         false,
-        "Terminal tasks must not offer approval actions.",
       );
       const actions = await read(
-        `Array.from(document.querySelectorAll("[data-audit-action]")).filter(e=>e.dataset.taskId===${JSON.stringify(taskId)}).map(e=>({action:e.dataset.auditAction,text:e.textContent}))`,
+        `Array.from(document.querySelectorAll("[data-audit-action]")).filter(e=>e.dataset.taskId===${JSON.stringify(taskId)}).map(e=>e.dataset.auditAction)`,
       );
-      for (const action of [
-        "task.create",
-        "task.plan",
-        decision === "approved"
-          ? "approval.approve"
-          : decision === "rejected"
-            ? "approval.reject"
-            : "task.cancel",
-      ]) {
-        assert.ok(
-          actions.some((row) => row.action === action),
-          `Missing ${action} audit for this task.`,
-        );
-      }
-      if (decision === "approved") {
-        assert.ok(
-          actions.some((row) => row.action === "task.execute" && row.text.includes("simulated")),
-        );
-        assert.ok(
-          actions.some(
-            (row) => row.action === "step.firebase_write" && row.text.includes("refused"),
-          ),
-          "Approval cannot authorize a Firebase write.",
-        );
-      } else assert.ok(!actions.some((row) => row.action === "task.execute"));
+      for (const action of ["task.create", "task.plan", "task.cancel"])
+        assert.ok(actions.includes(action), `Missing ${action} audit for this task.`);
+      assert.ok(
+        !actions.some((action) => action === "task.execute" || action.startsWith("approval.")),
+        "Denied calls must not produce success audit.",
+      );
+      // Browser reload retains server memory in this process, not durable restart storage.
+      await browser("reload");
+      await wait('document.querySelector("[data-luna-ready=true]") !== null');
+      await wait(
+        `${detail}?.dataset.taskId === ${JSON.stringify(taskId)} && ${detail}?.dataset.taskStatus === "cancelled"`,
+      );
+      const auditCount = await read(
+        `Array.from(document.querySelectorAll("[data-audit-action]")).filter(e=>e.dataset.taskId===${JSON.stringify(taskId)}).length`,
+      );
+      assert.equal(auditCount, actions.length);
       assert.equal(
         await read(
           'document.body.innerText.includes("NO-GO") && document.body.innerText.includes("launch off")',
         ),
         true,
       );
-      checks.push({ viewport, decision, auditVerified: true, live: false });
+      checks.push({ viewport, decision, auditVerified: true, reloadVerified: true, live: false });
     }
     assert.equal(
       await read("document.documentElement.scrollWidth > window.innerWidth"),

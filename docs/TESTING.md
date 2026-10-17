@@ -49,8 +49,8 @@ LUNA_E2E_URL=http://127.0.0.1:8081/ npm run test:e2e
 
 Runner chỉ nhận `127.0.0.1:8080` hoặc `:8081`, không credential/query/path khác. Session, config và sockets riêng; không dùng profile hay saved auth của người dùng. Domain allowlist chặn resource ngoài loopback. Chrome chỉ lái UI local; browser adapter của Luna vẫn launch off.
 
-Desktop/mobile đều kiểm duyệt, từ chối và hủy: sáu kịch bản cho dev, sáu cho built. Trạng thái task và audit ID phải khớp; dry-run trước approval/sau terminal bị disabled; approval không làm Firebase write được thực thi. Page errors, overflow hoặc thiếu audit làm runner fail. Failure cũng ghi verdict mới và snapshot/screenshot chẩn đoán; không dùng verdict cũ để báo pass. Artifacts synthetic ở thư mục screenshots ignored.
+Desktop/mobile đều kiểm approve/reject/execute bị từ chối khi auth chưa sẵn sàng, sau đó cancel và reload: sáu kịch bản cho dev, sáu cho built. Không bật quyền fixture để chạy happy flow qua HTTP; core simulation kiểm happy flow riêng. Trạng thái task và audit ID phải khớp; deny không đổi task hoặc tạo success audit; sau terminal bị disabled; reload giữ state trong cùng server process. Page errors, overflow hoặc thiếu audit làm runner fail. Failure cũng ghi verdict mới và snapshot/screenshot chẩn đoán; không dùng verdict cũ để báo pass. Artifacts synthetic ở thư mục screenshots ignored.
 
 Form chỉ nhận thao tác sau khi React hydrate xong để nội dung nhập sớm không bị reset thành preset. Task đã hủy không còn hiện nút duyệt; backend từ chối cả approve/reject cho yêu cầu cũ và regression test kiểm chứng điều này.
 
-Đây chưa phải auth/role, durable persistence, concurrency hay staging/live validation. Tất cả vẫn NO-GO.
+Xem [local auth/state contract](LOCAL_AUTH_STATE_CONTRACT.md) cho role fixtures và deterministic race/replay tests. Đây chưa phải tích hợp identity thật, durable persistence, multi-worker concurrency hay staging/live validation. Tất cả vẫn NO-GO.

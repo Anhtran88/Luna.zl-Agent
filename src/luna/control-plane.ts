@@ -28,7 +28,11 @@ import {
 import { describeDeployPosture, type DeployPosture } from "./deploy.ts";
 import { assessReadiness, summarizeReadiness, type ReadinessSummary } from "./readiness.ts";
 import { assessStaging, summarizeStaging, type StagingSummary } from "./staging.ts";
-import { assessProduction, summarizeProduction, type ProductionSummary } from "./production-gate.ts";
+import {
+  assessProduction,
+  summarizeProduction,
+  type ProductionSummary,
+} from "./production-gate.ts";
 import { simulateValidation, summarizeValidation, type ValidationSummary } from "./validation.ts";
 import { evaluateGovernance, summarizeGovernance, type GovernanceSummary } from "./policy.ts";
 import { assessOperations, summarizeOperations, type OperationsSummary } from "./operations.ts";
@@ -66,6 +70,8 @@ export class LunaControlPlane {
   private readonly audits: AuditEvent[] = [];
   private readonly runs: AgentRun[] = [];
   private readonly deps: ControlPlaneDeps;
+  private readonly mutations = new Set<string>();
+  private readonly recoveryRequired = new Set<string>();
 
   constructor(deps: ControlPlaneDeps) {
     this.deps = deps;
@@ -93,14 +99,22 @@ export class LunaControlPlane {
       staging: partial?.staging ?? summarizeStaging(assessStaging({ env })),
       production: partial?.production ?? summarizeProduction(assessProduction({ env })),
       validation: partial?.validation ?? summarizeValidation(simulateValidation({ env })),
-      governance: partial?.governance ?? summarizeGovernance(evaluateGovernance({ env, owners: ownerDecisionOwners() })),
+      governance:
+        partial?.governance ??
+        summarizeGovernance(evaluateGovernance({ env, owners: ownerDecisionOwners() })),
       operations:
         partial?.operations ??
-        summarizeOperations(assessOperations({ env, owners: ownerDecisionOwners(), roleNames: OWNER_ROLE_NAMES })),
+        summarizeOperations(
+          assessOperations({ env, owners: ownerDecisionOwners(), roleNames: OWNER_ROLE_NAMES }),
+        ),
     });
   }
 
-  async createTask(input: { title?: string; goal: string; mode?: ExecutionMode }): Promise<AgentTask> {
+  async createTask(input: {
+    title?: string;
+    goal: string;
+    mode?: ExecutionMode;
+  }): Promise<AgentTask> {
     const goal = input.goal.trim();
     const title = (input.title?.trim() || goal.slice(0, 72)).trim();
     if (goal.length < 3 || goal.length > 2000) {
@@ -139,10 +153,57 @@ export class LunaControlPlane {
           ? "Đã ghi nhận yêu cầu live. Thực thi sẽ bị phase lock từ chối."
           : "Đã tạo tác vụ ở chế độ dry-run.",
     });
-    return task;
+    return structuredClone(task);
   }
 
   async planTask(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.planTaskOnce(taskId));
+  }
+
+  async decideApproval(
+    approvalId: string,
+    decision: "approved" | "rejected",
+    note?: string,
+  ): Promise<ApprovalRequest> {
+    const approval = this.approvals.get(approvalId);
+    if (!approval) throw new LunaError("NOT_FOUND", "Không thấy yêu cầu duyệt.");
+    return this.mutate(approval.taskId, () => this.decideApprovalOnce(approvalId, decision, note));
+  }
+
+  async execute(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.executeOnce(taskId));
+  }
+
+  async cancel(taskId: string): Promise<AgentTask> {
+    return this.mutate(taskId, () => this.cancelOnce(taskId));
+  }
+
+  private async mutate<T>(taskId: string, work: () => Promise<T>): Promise<T> {
+    if (this.recoveryRequired.has(taskId))
+      throw new LunaError(
+        "RECOVERY_REQUIRED",
+        "Trạng thái ghi chưa chắc chắn. Cần đối chiếu thủ công, không tự retry.",
+      );
+    if (this.mutations.has(taskId))
+      throw new LunaError("BUSY", "Tác vụ đang được xử lý. Đọc lại trạng thái trước khi thử lại.");
+    this.mutations.add(taskId);
+    const before = JSON.stringify(this.tasks.get(taskId));
+    try {
+      return structuredClone(await work());
+    } catch (error) {
+      const task = this.tasks.get(taskId);
+      if (task && (!(error instanceof LunaError) || before !== JSON.stringify(task))) {
+        // Persistence has no transaction/CAS. Never retry an ambiguously committed mutation.
+        task.status = "blocked";
+        this.recoveryRequired.add(taskId);
+      }
+      throw error;
+    } finally {
+      this.mutations.delete(taskId);
+    }
+  }
+
+  private async planTaskOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (task.status !== "draft") {
       throw new LunaError("BAD_STATUS", "Chỉ lập kế hoạch từ trạng thái nháp.");
@@ -184,7 +245,7 @@ export class LunaControlPlane {
     return task;
   }
 
-  async decideApproval(
+  private async decideApprovalOnce(
     approvalId: string,
     decision: "approved" | "rejected",
     note?: string,
@@ -214,12 +275,15 @@ export class LunaControlPlane {
     return approval;
   }
 
-  async execute(taskId: string): Promise<AgentTask> {
+  private async executeOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     const startedAt = this.deps.clock.now();
     const approval = task.approvalId ? this.approvals.get(task.approvalId) : undefined;
     const gate = decideExecution({ task, approval });
     if (!gate.ok) {
+      if (gate.code === "TERMINAL" || gate.code === "BAD_STATUS") {
+        throw new LunaError(gate.code, gate.message);
+      }
       if (gate.code === "PHASE_LOCK") task.status = "blocked";
       await this.record({
         actor: "system",
@@ -267,7 +331,7 @@ export class LunaControlPlane {
     return task;
   }
 
-  async cancel(taskId: string): Promise<AgentTask> {
+  private async cancelOnce(taskId: string): Promise<AgentTask> {
     const task = this.require(taskId);
     if (
       task.status === "dry_run_completed" ||
@@ -291,7 +355,7 @@ export class LunaControlPlane {
 
   snapshot(): ControlPlaneSnapshot {
     const { firebaseConfig, modelConfig, firebase, store } = this.deps;
-    return {
+    return structuredClone<ControlPlaneSnapshot>({
       phase: LUNA_PHASE,
       release: LUNA_RELEASE,
       phaseLock: true,
@@ -346,7 +410,7 @@ export class LunaControlPlane {
       validation: this.deps.validation,
       governance: this.deps.governance,
       operations: this.deps.operations,
-    };
+    });
   }
 
   private require(taskId: string): AgentTask {

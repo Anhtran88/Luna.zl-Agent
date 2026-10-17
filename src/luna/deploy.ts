@@ -1,6 +1,6 @@
 import { PHASE4_ADAPTERS, browserContractsLocked } from "./adapters.ts";
 import { BROWSER_CONTRACTS } from "./browser.ts";
-import { LUNAZL_FIREBASE_DATABASE_URL } from "./config.ts";
+import { LUNAZL_FIREBASE_DATABASE_URL, STAGING_FIREBASE_DATABASE_URL } from "./config.ts";
 import { LUNA_RELEASE } from "./domain.ts";
 import { containsSecret, evaluateLiveGate, preflightAudit, rulesDenyByDefault, type SecurityAuditRecord } from "./security.ts";
 
@@ -65,6 +65,7 @@ export interface DryRunInput {
 
 const SECRET_ENV_KEYS = [
   "FIREBASE_SERVICE_ACCOUNT_JSON",
+  "STAGING_FIREBASE_SERVICE_ACCOUNT_JSON",
   "NINE_ROUTER_API_KEY",
   "FIREBASE_AUTH_TOKEN",
   "LUNA_BROWSER_COOKIE",
@@ -103,7 +104,7 @@ export function readDeployTarget(raw: string | undefined): {
 }
 
 function firebaseLiveRequested(env: Env): boolean {
-  return env.FIREBASE_LIVE_ENABLED === "true" || env.LUNA_FIREBASE_LIVE === "true";
+  return evaluateLiveGate(env).violations.includes("firebase-live");
 }
 
 function populatedSecretKeys(env: Env): string[] {
@@ -120,6 +121,8 @@ export function unexpectedEndpointKey(env: Env): string | null {
   }
   const firebase = env.FIREBASE_DATABASE_URL?.trim().replace(/\/$/, "");
   if (firebase && firebase !== LUNAZL_FIREBASE_DATABASE_URL) return "FIREBASE_DATABASE_URL";
+  const stagingFirebase = env.STAGING_FIREBASE_DATABASE_URL?.trim();
+  if (stagingFirebase && stagingFirebase !== STAGING_FIREBASE_DATABASE_URL) return "STAGING_FIREBASE_DATABASE_URL";
   const router = env.NINE_ROUTER_BASE_URL?.trim();
   if (router && !isLoopbackUrl(router)) return "NINE_ROUTER_BASE_URL";
   return null;
