@@ -45,7 +45,10 @@ export function simulateEoffice(input: {
 export const DELIVERY_PDF_PATTERN = "P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf";
 export const HANDOVER_STORAGE_ROOT_ENV = "LUNA_HANDOVER_STORAGE_ROOT";
 
-/** Alias table stays empty in git. Unknown aliases ask instead of inventing a code. */
+/** Confirmed project codes. Any other code asks. A caller map may only point at these. */
+export const CONFIRMED_PROJECT_ALIASES = ["SUN", "HOL", "GRC"] as const;
+
+/** Display-name map stays empty in git. Supply it outside the repo if needed. */
 export const PROJECT_ALIASES: Readonly<Record<string, string>> = {};
 
 export interface DeliveryPdfPlan extends HandoverResult {
@@ -82,19 +85,23 @@ function formatDeliveryDate(value: string | null | undefined): { label: string; 
   return { label: `${dd}.${mm}.${year}`, year: String(year), month: mm };
 }
 
+function confirmedAlias(value: string | null | undefined): string | null {
+  const token = value?.trim().toUpperCase() ?? "";
+  return (CONFIRMED_PROJECT_ALIASES as readonly string[]).includes(token) ? token : null;
+}
+
 function resolveProjectAlias(input: {
   project?: string | null;
   projectAlias?: string | null;
   aliases?: Readonly<Record<string, string>>;
 }): string | null {
-  const table = input.aliases ?? PROJECT_ALIASES;
-  const known = new Set(Object.values(table).filter((item) => /^[A-Z0-9]{2,24}$/.test(item)));
-  const explicit = input.projectAlias?.trim() ?? "";
-  if (explicit) return known.has(explicit) || (/^[A-Z0-9]{2,24}$/.test(explicit) && input.aliases === undefined) ? explicit : null;
+  if (input.projectAlias?.trim()) return confirmedAlias(input.projectAlias);
   const project = input.project?.trim() ?? "";
-  if (/^[A-Z0-9]{2,24}$/.test(project) && input.aliases === undefined) return project;
-  const mapped = table[project.toLowerCase()];
-  return mapped && known.has(mapped) ? mapped : null;
+  if (!project) return null;
+  const table = input.aliases ?? PROJECT_ALIASES;
+  const mapped = table[project] ?? table[project.toLowerCase()];
+  if (mapped !== undefined) return confirmedAlias(mapped);
+  return confirmedAlias(project);
 }
 
 function withDuplicateSuffix(fileName: string, existing: readonly string[]): string | null {

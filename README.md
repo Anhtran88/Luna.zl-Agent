@@ -28,7 +28,7 @@ npm run governance:check
 npm run ops:check
 ```
 
-`ops:check` in NO-GO. Chủ repo gán mọi vai cho kenbi; đó là owner collision, không phải GO. License MIT. Cap tháng mỗi dịch vụ là 1 USD và lần này chi 0. Staging logic tên luna-staging, chưa verified. Browser launch tắt. Zalo và eOffice chỉ là policy mô phỏng. Tên PDF giao nhận là `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf`; lần này không ghi file và storage root để trống. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Quyết định: [config/readiness/owner-decisions.json](config/readiness/owner-decisions.json).
+`ops:check` in NO-GO. Chủ repo gán mọi vai cho kenbi; đó là owner collision, không phải GO. License MIT. Cap tháng mỗi dịch vụ là 1 USD và lần này chi 0. Staging logic tên luna-staging, chưa verified. Browser launch tắt. Zalo và eOffice chỉ là policy mô phỏng. Tên PDF giao nhận là `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf`; mã dự án chỉ SUN, HOL hoặc GRC, mã khác thì hỏi. Lần này không ghi file và storage root để trống. Vận hành: [docs/OPERATIONS.md](docs/OPERATIONS.md). Quyết định: [config/readiness/owner-decisions.json](config/readiness/owner-decisions.json).
 
 Biến môi trường chỉ là tên và placeholder. Xem [.env.example](.env.example). Không commit `.env`, service account, cookie hay API key.
 

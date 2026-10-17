@@ -108,6 +108,7 @@ describe("phase 12 owner decisions", () => {
           namingRule: string;
           storageRoot: string;
           stored: boolean;
+          projectAliases: string[];
         };
         executed: boolean;
         login: boolean;
@@ -138,6 +139,7 @@ describe("phase 12 owner decisions", () => {
     assert.equal(recorded.zaloEofficePolicy.attachments.storageRoot, "unset");
     assert.equal(recorded.zaloEofficePolicy.attachments.storagePath, null);
     assert.equal(recorded.zaloEofficePolicy.attachments.stored, false);
+    assert.deepEqual(recorded.zaloEofficePolicy.attachments.projectAliases, ["SUN", "HOL", "GRC"]);
     assert.equal(recorded.zaloEofficePolicy.executed, false);
     assert.equal(recorded.zaloEofficePolicy.login, false);
     const license = readFileSync("LICENSE", "utf8");

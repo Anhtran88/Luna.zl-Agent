@@ -51,6 +51,6 @@ Staging: tên logic `luna-staging`. Chủ repo báo đã có (`owner-reported-pr
 
 Browser automation chỉ được xét trong staging, cap 1 USD/tháng. Launch vẫn tắt cho tới khi staging được xác minh, evidence browser hợp lệ, hết owner collision và approval gate đạt. Production browser bị cấm.
 
-Zalo chỉ được mô phỏng đọc ở nhóm Bi chỉ định và không được gửi. eOffice BM03.2 chỉ được mô phỏng đọc hoặc đối chiếu. Không login và không thao tác thật. Tên file mô phỏng là `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf`, trùng thì `_02`, `_03`, có thể kèm `BM03.2`. Storage root nằm ngoài repo và mặc định unset. Không ghi file và không đưa đường dẫn tuyệt đối vào repo.
+Zalo chỉ được mô phỏng đọc ở nhóm Bi chỉ định và không được gửi. eOffice BM03.2 chỉ được mô phỏng đọc hoặc đối chiếu. Không login và không thao tác thật. Tên file mô phỏng là `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf`, trùng thì `_02`, `_03`, có thể kèm `BM03.2`. Mã dự án chỉ SUN, HOL hoặc GRC. Storage root nằm ngoài repo và mặc định unset. Không ghi file và không đưa đường dẫn tuyệt đối vào repo.
 
 License MIT không cấp quyền deploy. Copyright giữ `Anhtran88`.

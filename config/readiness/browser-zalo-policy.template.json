@@ -18,6 +18,7 @@
       "duplicateSuffix": "_02",
       "formCode": "BM03.2",
       "folderLabels": ["year", "month", "material"],
+      "projectAliases": ["SUN", "HOL", "GRC"],
       "storageRoot": "unset",
       "storagePath": null,
       "stored": false

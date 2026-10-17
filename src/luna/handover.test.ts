@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  CONFIRMED_PROJECT_ALIASES,
   DELIVERY_PDF_PATTERN,
   planDeliveryPdf,
   PROJECT_ALIASES,
@@ -23,7 +24,7 @@ function assertOffline(result: { executed: boolean; networkCalls: number; login:
 const NAMED = {
   deliveryDate: "2026-01-15",
   material: "Thép",
-  projectAlias: "DUANMAU",
+  projectAlias: "SUN",
   attachmentCount: 2,
 } as const;
 
@@ -63,6 +64,7 @@ describe("handover policy simulation", () => {
   it("names one merged PDF when the fields are known and does not write it", () => {
     assert.equal(DELIVERY_PDF_PATTERN, "P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf");
     assert.deepEqual(PROJECT_ALIASES, {});
+    assert.deepEqual(CONFIRMED_PROJECT_ALIASES, ["SUN", "HOL", "GRC"]);
     assert.equal(readHandoverStorageRoot(), null);
     assert.equal(readHandoverStorageRoot({ LUNA_HANDOVER_STORAGE_ROOT: "  " }), null);
 
@@ -70,42 +72,44 @@ describe("handover policy simulation", () => {
     assert.equal(merged.decision, "simulated");
     assert.equal(merged.reason, "named");
     assert.notEqual(merged.reason, "naming-rule-missing");
-    assert.equal(merged.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU.pdf");
+    assert.equal(merged.fileName, "P.GIAO_THEP_15.01.2026_SUN.pdf");
     assert.equal(merged.pdfPerNote, 1);
     assert.equal(merged.stored, false);
     assert.equal(merged.storageRootConfigured, false);
     assert.deepEqual(merged.relativeLabels, ["2026", "01", "THEP"]);
     assertOffline(merged);
 
-    const dotted = planDeliveryPdf({ ...NAMED, deliveryDate: "15.01.2026", material: "VATTU", projectAlias: "DUAN" });
-    assert.equal(dotted.fileName, "P.GIAO_VATTU_15.01.2026_DUAN.pdf");
-    assert.equal(dotted.pdfPerNote, 1);
+    const hol = planDeliveryPdf({ ...NAMED, deliveryDate: "15.01.2026", material: "VATTU", projectAlias: "HOL" });
+    assert.equal(hol.fileName, "P.GIAO_VATTU_15.01.2026_HOL.pdf");
+    const grc = planDeliveryPdf({ ...NAMED, projectAlias: "grc", attachmentCount: 1 });
+    assert.equal(grc.fileName, "P.GIAO_THEP_15.01.2026_GRC.pdf");
+    assert.equal(grc.pdfPerNote, 1);
   });
 
   it("adds _02 and _03 on a name collision and can include BM03.2", () => {
-    const base = "P.GIAO_THEP_15.01.2026_DUANMAU.pdf";
+    const base = "P.GIAO_THEP_15.01.2026_SUN.pdf";
     const second = planDeliveryPdf({ ...NAMED, existingNames: [base] });
-    assert.equal(second.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU_02.pdf");
+    assert.equal(second.fileName, "P.GIAO_THEP_15.01.2026_SUN_02.pdf");
     assert.equal(second.stored, false);
     assertOffline(second);
 
     const third = planDeliveryPdf({ ...NAMED, existingNames: [base, second.fileName ?? ""] });
-    assert.equal(third.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU_03.pdf");
+    assert.equal(third.fileName, "P.GIAO_THEP_15.01.2026_SUN_03.pdf");
 
     const withForm = planDeliveryPdf({ ...NAMED, formCode: "BM03.2" });
-    assert.equal(withForm.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU_BM03.2.pdf");
+    assert.equal(withForm.fileName, "P.GIAO_THEP_15.01.2026_SUN_BM03.2.pdf");
     const withFormDup = planDeliveryPdf({
       ...NAMED,
       formCode: "BM03.2",
       existingNames: [withForm.fileName ?? ""],
     });
-    assert.equal(withFormDup.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU_BM03.2_02.pdf");
+    assert.equal(withFormDup.fileName, "P.GIAO_THEP_15.01.2026_SUN_BM03.2_02.pdf");
     assert.equal(withFormDup.pdfPerNote, 1);
     assert.equal(withFormDup.stored, false);
   });
 
   it("asks when a field is missing or the project alias is unknown", () => {
-    const missing = planDeliveryPdf({ material: "Thép", projectAlias: "DUANMAU", attachmentCount: 1 });
+    const missing = planDeliveryPdf({ material: "Thép", projectAlias: "SUN", attachmentCount: 1 });
     assert.equal(missing.decision, "ask");
     assert.equal(missing.reason, "missing-field");
     assert.equal(missing.fileName, null);
@@ -137,20 +141,41 @@ describe("handover policy simulation", () => {
     assert.equal(lower.reason, "unknown-project-alias");
     assert.equal(lower.fileName, null);
 
+    for (const code of ["OTHER", "DUANMAU", "DUAN"]) {
+      const rejected = planDeliveryPdf({ ...NAMED, projectAlias: code, attachmentCount: 1 });
+      assert.equal(rejected.decision, "ask");
+      assert.equal(rejected.reason, "unknown-project-alias");
+      assert.equal(rejected.fileName, null);
+      assert.equal(JSON.stringify(rejected).includes(code), false);
+    }
+
     const mapped = planDeliveryPdf({
+      deliveryDate: "2026-01-15",
+      material: "Thép",
+      project: "du an mau",
+      aliases: { "du an mau": "SUN" },
+      attachmentCount: 1,
+    });
+    assert.equal(mapped.fileName, "P.GIAO_THEP_15.01.2026_SUN.pdf");
+    assert.equal(JSON.stringify(mapped).includes("du an mau"), false);
+
+    const invented = planDeliveryPdf({
       deliveryDate: "2026-01-15",
       material: "Thép",
       project: "du an mau",
       aliases: { "du an mau": "DUANMAU" },
       attachmentCount: 1,
     });
-    assert.equal(mapped.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU.pdf");
-    assert.equal(JSON.stringify(mapped).includes("du an mau"), false);
+    assert.equal(invented.decision, "ask");
+    assert.equal(invented.reason, "unknown-project-alias");
+    assert.equal(invented.fileName, null);
+    assert.equal(JSON.stringify(invented).includes("DUANMAU"), false);
 
     const notInTable = planDeliveryPdf({
       ...NAMED,
-      projectAlias: "OTHER",
-      aliases: { "du an mau": "DUANMAU" },
+      projectAlias: undefined,
+      project: "ten chua map",
+      aliases: { "du an mau": "SUN" },
     });
     assert.equal(notInTable.reason, "unknown-project-alias");
     assert.equal(notInTable.fileName, null);
@@ -161,7 +186,7 @@ describe("handover policy simulation", () => {
     const named = planDeliveryPdf({ ...NAMED, storageRoot: root });
     assert.equal(named.storageRootConfigured, true);
     assert.equal(named.stored, false);
-    assert.equal(named.fileName, "P.GIAO_THEP_15.01.2026_DUANMAU.pdf");
+    assert.equal(named.fileName, "P.GIAO_THEP_15.01.2026_SUN.pdf");
     const body = JSON.stringify(named);
     assert.equal(body.includes(root), false);
     assert.equal(body.includes("/"), false);
