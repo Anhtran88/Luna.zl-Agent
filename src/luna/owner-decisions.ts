@@ -16,9 +16,9 @@ export const OWNER_ROLE_NAMES = {
 export const BUDGET_SERVICES = ["firebase", "nineRouter", "browser"] as const;
 export type BudgetService = (typeof BUDGET_SERVICES)[number];
 
-/** Monthly maximums in USD. Firebase 0 rejects any positive charge. These are caps, not spend. */
+/** Monthly maximums in USD. A proposal above the cap is rejected. These are caps, not spend. */
 export const BUDGET_CAPS_USD = {
-  firebase: 0,
+  firebase: 1,
   nineRouter: 1,
   browser: 1,
 } as const;
@@ -35,11 +35,12 @@ export const OWNER_DECISIONS = {
   budgetCaps: BUDGET_CAPS_USD,
   chargedUsd: 0,
   stagingStatus: "owner-reported-present",
+  stagingName: "luna-staging",
   stagingVerified: false,
   browserAutomation: "staging-only",
   browserProduction: "forbidden",
   browserLaunch: false,
-  zaloEoffice: "scope-pending",
+  zaloEoffice: "simulated-readonly",
 } as const;
 
 export interface SpendDecision {
@@ -66,12 +67,18 @@ export interface BrowserLaunchDecision {
 }
 
 export interface ZaloDecision {
-  authorization: "scope-pending";
-  scope: null;
+  authorization: "simulated-readonly";
+  zalo: "read-only-designated-bi-groups";
+  send: "forbidden";
+  eoffice: "BM03.2-read-compare";
+  edit: "forbidden";
+  submit: "forbidden";
   executed: false;
   locked: true;
+  login: false;
   networkCalls: 0;
-  reason: "scope-pending";
+  storagePath: null;
+  reason: "live-locked";
 }
 
 export function ownerDecisionOwners(): Record<SodRole, string> {
@@ -138,15 +145,21 @@ export function evaluateBrowserLaunch(input: {
   };
 }
 
-/** Scope was not supplied. Any caller-provided scope or action is ignored and not echoed. */
+/** Live Zalo and eOffice stay locked. Caller-supplied scope or action is ignored and not echoed. */
 export function evaluateZaloEoffice(_input: { scope?: string | null; action?: string | null } = {}): ZaloDecision {
   return {
-    authorization: "scope-pending",
-    scope: null,
+    authorization: "simulated-readonly",
+    zalo: "read-only-designated-bi-groups",
+    send: "forbidden",
+    eoffice: "BM03.2-read-compare",
+    edit: "forbidden",
+    submit: "forbidden",
     executed: false,
     locked: true,
+    login: false,
     networkCalls: 0,
-    reason: "scope-pending",
+    storagePath: null,
+    reason: "live-locked",
   };
 }
 
@@ -176,11 +189,13 @@ export function summarizeOwnerPolicy() {
       liveEnabled: false as const,
     },
     staging: {
+      name: OWNER_DECISIONS.stagingName,
       status: OWNER_DECISIONS.stagingStatus,
       verified: false as const,
       environment: null,
       independentStagingOwner: false as const,
       probed: false as const,
+      deployed: false as const,
       networkCalls: 0 as const,
     },
     browser: {

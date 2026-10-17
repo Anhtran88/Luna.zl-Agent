@@ -62,16 +62,17 @@ describe("phase 12 owner decisions", () => {
 
     assert.equal(OWNER_DECISIONS.separationOfDuties, "BLOCKED");
     assert.equal(OWNER_DECISIONS.budgetStatus, "caps-recorded");
-    assert.equal(OWNER_DECISIONS.budgetCaps.firebase, 0);
+    assert.equal(OWNER_DECISIONS.budgetCaps.firebase, 1);
     assert.equal(OWNER_DECISIONS.budgetCaps.nineRouter, 1);
     assert.equal(OWNER_DECISIONS.budgetCaps.browser, 1);
     assert.equal(OWNER_DECISIONS.chargedUsd, 0);
     assert.equal(OWNER_DECISIONS.stagingStatus, "owner-reported-present");
+    assert.equal(OWNER_DECISIONS.stagingName, "luna-staging");
     assert.equal(OWNER_DECISIONS.stagingVerified, false);
     assert.equal(OWNER_DECISIONS.browserAutomation, "staging-only");
     assert.equal(OWNER_DECISIONS.browserProduction, "forbidden");
     assert.equal(OWNER_DECISIONS.browserLaunch, false);
-    assert.equal(OWNER_DECISIONS.zaloEoffice, "scope-pending");
+    assert.equal(OWNER_DECISIONS.zaloEoffice, "simulated-readonly");
     assert.equal(OWNER_DECISIONS.license, "MIT");
     assert.equal(OWNER_DECISIONS.copyrightHolder, "Anhtran88");
     assert.equal(BROWSER_CONTRACTS.every((contract) => contract.liveLaunch === false), true);
@@ -81,40 +82,57 @@ describe("phase 12 owner decisions", () => {
     assert.equal(policy.budget.withinCap, true);
     assert.equal(policy.budget.chargedUsd, 0);
     assert.equal(policy.staging.verified, false);
+    assert.equal(policy.staging.name, "luna-staging");
     assert.equal(policy.staging.environment, null);
     assert.equal(policy.staging.probed, false);
+    assert.equal(policy.staging.deployed, false);
     assert.equal(policy.browser.launch, false);
     assert.equal(policy.browser.policyAllows, false);
     assert.equal(policy.zaloEoffice.executed, false);
-    assert.equal(policy.zaloEoffice.scope, null);
+    assert.equal(policy.zaloEoffice.send, "forbidden");
+    assert.equal(policy.zaloEoffice.storagePath, null);
+    assert.equal(policy.zaloEoffice.login, false);
 
     const recorded = JSON.parse(readFileSync("config/readiness/owner-decisions.json", "utf8")) as {
       ownerCollision: boolean;
       separationOfDuties: string;
       budget: { caps: Array<{ service: string; monthlyCap: number; currency: string }> };
-      staging: { status: string; verified: boolean; environment: null };
+      staging: { name: string; status: string; verified: boolean; environment: null };
       browserPolicy: { launch: boolean; realAutomation: string; production: string };
-      zaloEofficePolicy: { authorization: string; scope: null; executed: boolean };
+      zaloEofficePolicy: {
+        authorization: string;
+        zalo: { send: string };
+        eoffice: { edit: string; submit: string };
+        attachments: { storagePath: null; namingRule: null };
+        executed: boolean;
+        login: boolean;
+      };
     };
     assert.equal(recorded.ownerCollision, true);
     assert.equal(recorded.separationOfDuties, "BLOCKED");
     assert.deepEqual(
       recorded.budget.caps.map((row) => [row.service, row.monthlyCap, row.currency]),
       [
-        ["firebase", 0, "USD"],
+        ["firebase", 1, "USD"],
         ["nineRouter", 1, "USD"],
         ["browser", 1, "USD"],
       ],
     );
     assert.equal(recorded.staging.status, "owner-reported-present");
+    assert.equal(recorded.staging.name, "luna-staging");
     assert.equal(recorded.staging.verified, false);
     assert.equal(recorded.staging.environment, null);
     assert.equal(recorded.browserPolicy.realAutomation, "staging-only");
     assert.equal(recorded.browserPolicy.production, "forbidden");
     assert.equal(recorded.browserPolicy.launch, false);
-    assert.equal(recorded.zaloEofficePolicy.authorization, "scope-pending");
-    assert.equal(recorded.zaloEofficePolicy.scope, null);
+    assert.equal(recorded.zaloEofficePolicy.authorization, "simulated-readonly");
+    assert.equal(recorded.zaloEofficePolicy.zalo.send, "forbidden");
+    assert.equal(recorded.zaloEofficePolicy.eoffice.edit, "forbidden");
+    assert.equal(recorded.zaloEofficePolicy.eoffice.submit, "forbidden");
+    assert.equal(recorded.zaloEofficePolicy.attachments.namingRule, null);
+    assert.equal(recorded.zaloEofficePolicy.attachments.storagePath, null);
     assert.equal(recorded.zaloEofficePolicy.executed, false);
+    assert.equal(recorded.zaloEofficePolicy.login, false);
     const license = readFileSync("LICENSE", "utf8");
     assert.match(license, /MIT License/);
     assert.match(license, /Copyright \(c\) 2026 Anhtran88/);
@@ -124,9 +142,10 @@ describe("phase 12 owner decisions", () => {
   });
 
   it("rejects spend above the monthly cap and charges nothing", () => {
-    assert.equal(BUDGET_CAPS_USD.firebase, 0);
+    assert.equal(BUDGET_CAPS_USD.firebase, 1);
     assert.equal(evaluateMonthlySpend("firebase", 0).ok, true);
-    assert.equal(evaluateMonthlySpend("firebase", 0.01).reason, "over-cap");
+    assert.equal(evaluateMonthlySpend("firebase", 1).ok, true);
+    assert.equal(evaluateMonthlySpend("firebase", 1.01).reason, "over-cap");
     assert.equal(evaluateMonthlySpend("nineRouter", 1).ok, true);
     assert.equal(evaluateMonthlySpend("nineRouter", 1.01).ok, false);
     assert.equal(evaluateMonthlySpend("browser", 1).decision, "within-cap");
@@ -147,7 +166,7 @@ describe("phase 12 owner decisions", () => {
 
     let calls = 0;
     const over = assessOperations({
-      proposedSpend: { firebase: 0.01, nineRouter: 2, browser: 1 },
+      proposedSpend: { firebase: 1.01, nineRouter: 2, browser: 1 },
       fetchImpl: () => {
         calls += 1;
         return Promise.resolve();
@@ -208,14 +227,17 @@ describe("phase 12 owner decisions", () => {
     assert.equal(missingOne.launch, false);
 
     const zalo = evaluateZaloEoffice({ scope: "https://secret.example/token=abc", action: "login" });
-    assert.equal(zalo.authorization, "scope-pending");
-    assert.equal(zalo.scope, null);
+    assert.equal(zalo.authorization, "simulated-readonly");
+    assert.equal(zalo.send, "forbidden");
+    assert.equal(zalo.edit, "forbidden");
+    assert.equal(zalo.submit, "forbidden");
     assert.equal(zalo.locked, true);
     assert.equal(zalo.executed, false);
+    assert.equal(zalo.login, false);
     assert.equal(zalo.networkCalls, 0);
+    assert.equal(zalo.storagePath, null);
     const body = JSON.stringify(zalo);
     assert.equal(body.includes("secret.example"), false);
-    assert.equal(body.includes("login"), false);
     assert.equal(body.includes("token"), false);
   });
 });

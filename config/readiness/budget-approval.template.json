@@ -7,7 +7,7 @@
     "currency": "USD",
     "chargedUsd": 0,
     "caps": [
-      { "service": "firebase", "monthlyCap": 0, "currency": "USD", "status": "cap-recorded" },
+      { "service": "firebase", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
       { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
       { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
     ]

@@ -1,7 +1,7 @@
 {
   "decision": "NO-GO",
   "authorization": "not-granted",
-  "note": "Browser chỉ được xét trong staging và launch vẫn tắt. Production browser bị cấm. Zalo/eOffice đang scope-pending nên mọi thao tác thật vẫn khóa. Evidence vẫn BLOCKED.",
+  "note": "Browser chỉ được xét trong staging và launch vẫn tắt. Production browser bị cấm. Zalo chỉ đọc ở nhóm Bi chỉ định, không gửi. eOffice BM03.2 chỉ đọc hoặc đối chiếu. Evidence vẫn BLOCKED. Không lưu đường dẫn.",
   "browserPolicy": {
     "realAutomation": "staging-only",
     "production": "forbidden",
@@ -9,10 +9,15 @@
     "monthlyCapUsd": 1
   },
   "zaloEofficePolicy": {
-    "authorization": "scope-pending",
-    "scope": null,
-    "actions": "locked",
-    "executed": false
+    "authorization": "simulated-readonly",
+    "zalo": { "mode": "read-only", "audience": "designated-bi-groups", "send": "forbidden" },
+    "eoffice": { "form": "BM03.2", "mode": "read-compare", "edit": "forbidden", "submit": "forbidden" },
+    "attachments": { "merge": "one-pdf-per-delivery-note", "namingRule": null, "storagePath": null },
+    "extract": ["deliveryDate", "project", "materials", "lineItems", "quantity"],
+    "unclear": "stop-and-ask-bi-or-luna",
+    "ticketEdit": { "actor": "nv-trinh-phieu", "after": "bi-approval" },
+    "executed": false,
+    "login": false
   },
   "records": [
     { "field": "browser-policy", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "browser", "approval_reference": null, "status": "BLOCKED" },

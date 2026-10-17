@@ -1,13 +1,15 @@
 {
   "decision": "NO-GO",
   "authorization": "not-granted",
-  "note": "Chủ repo báo staging đã có. status=owner-reported-present và verified=false cho tới khi có evidence an toàn và staging owner độc lập. Không ghi URL hay credential. Không probe.",
+  "note": "Tên logic là luna-staging. status=owner-reported-present và verified=false. Không ghi URL hay credential. Không probe và không deploy.",
   "staging": {
+    "name": "luna-staging",
     "status": "owner-reported-present",
     "verified": false,
     "environment": null,
     "independentStagingOwner": false,
-    "probed": false
+    "probed": false,
+    "deployed": false
   },
   "records": [
     { "field": "staging-environment", "evidence_id": null, "source_type": null, "created_at": null, "expires_at": null, "sha256": null, "scope": "staging", "approval_reference": null, "status": "BLOCKED" }

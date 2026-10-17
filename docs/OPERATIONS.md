@@ -16,19 +16,19 @@ npm run security:check
 
 Bảy vai đã được chủ repo gán cho **kenbi**, nhưng đó là **owner collision**. Separation-of-duties giữ **BLOCKED**. Không suy diễn thành bảy handle khác nhau. Approver, security reviewer và credential owner trùng requester nên governance, staging và production vẫn NO-GO.
 
-Ngân sách: cap tháng đã ghi và **không phải quyền chi**. Firebase tối đa **0 USD**, 9Router tối đa **1 USD**, Browser tối đa **1 USD**. Lần này không phát sinh phí. Vượt cap thì từ chối và không gọi dịch vụ. Bằng chứng ngân sách vẫn BLOCKED.
+Ngân sách: cap tháng đã ghi và **không phải quyền chi**. Firebase, 9Router và Browser mỗi dịch vụ tối đa **1 USD**. Lần này không phát sinh phí. Vượt cap thì từ chối và không gọi dịch vụ. Bằng chứng ngân sách vẫn BLOCKED.
 
 | Dịch vụ | Cap tối đa / tháng | Tiền tệ | Trạng thái |
 | --- | --- | --- | --- |
-| Firebase | 0 | USD | cap đã ghi, evidence BLOCKED |
+| Firebase | 1 | USD | cap đã ghi, evidence BLOCKED |
 | 9Router | 1 | USD | cap đã ghi, evidence BLOCKED |
 | Browser | 1 | USD | cap đã ghi, evidence BLOCKED |
 
-Staging: chủ repo báo **đã có** (`owner-reported-present`) nhưng `verified=false`. Không probe, không lưu URL hay credential. Staging owner vẫn là kenbi nên chưa độc lập.
+Staging: tên logic **`luna-staging`**. Chủ repo báo đã có (`owner-reported-present`) nhưng `verified=false`. Không probe, không deploy, không lưu URL hay credential. Staging owner vẫn là kenbi nên chưa độc lập.
 
 Browser automation: policy **chỉ staging**, cap 1 USD/tháng. Launch **tắt** cho tới khi staging được xác minh, evidence browser hợp lệ, hết owner collision và approval gate đạt. Production browser **cấm**. Playwright, Skyvern và Browser Use giữ stub.
 
-Zalo/eOffice: `authorization=scope-pending`. Chưa có scope hay action. Mọi thao tác thật vẫn khóa. Không suy diễn, không đăng nhập, không gửi hay ghi dữ liệu.
+Zalo: chỉ đọc ở nhóm Bi chỉ định, tuyệt đối không gửi. eOffice BM03.2 chỉ đọc hoặc đối chiếu, không sửa và không submit. Đính kèm được mô phỏng thành một PDF mỗi phiếu; quy tắc đặt tên chưa có trong repo nên mô phỏng dừng và hỏi, không ghi đường dẫn. Trích xuất ngày giao, dự án, vật tư, hạng mục, khối lượng; điểm chưa rõ thì dừng hỏi Bi hoặc Luna. Chỉ NV Trình phiếu được chỉnh phiếu sau khi Bi duyệt, và lần này cũng chỉ là mô phỏng. Không login, không thao tác thật.
 
 License package: **MIT**. Copyright trong `LICENSE` dùng GitHub login `Anhtran88` vì profile không có tên pháp lý. Chủ repo thay nếu muốn tên khác. License không chuyển GO.
 
@@ -39,10 +39,10 @@ Mẫu trống, không có dữ liệu thật, nằm ở [config/readiness](../co
 | Mẫu | Chủ repo điền ngoài repo |
 | --- | --- |
 | `role-assignment.template.json` | Mọi vai là kenbi và BLOCKED vì collision. Không điền handle khác hộ chủ repo. |
-| `staging-confirmation.template.json` | Mã staging, scope `staging`, SHA-256, hạn, approval reference. Status hiện là owner-reported-present, verified false. Không ghi URL. |
+| `staging-confirmation.template.json` | Tên logic `luna-staging`. Mã staging, scope `staging`, SHA-256, hạn, approval reference. Status hiện là owner-reported-present, verified false. Không ghi URL. |
 | `budget-approval.template.json` | Cap tháng đã ghi. Mã ngân sách vẫn thiếu. Không ghi số tài khoản. |
 | `security-legal-approval.template.json` | Mã phê duyệt an ninh và pháp lý. |
-| `browser-zalo-policy.template.json` | Browser staging-only, launch off. Zalo/eOffice scope-pending. Không bật browser và không đăng nhập. |
+| `browser-zalo-policy.template.json` | Browser staging-only, launch off. Zalo chỉ đọc, eOffice BM03.2 chỉ đọc hoặc đối chiếu. Không bật browser và không đăng nhập. |
 | `artifact-migration-backup.template.json` | Mã artifact, migration, backup và digest. |
 | `health-alerting.template.json` | Mã health và alerting từ quy trình riêng. Metadata local không phải probe. |
 | `evidence.schema.json` | Đủ mười một field. Mọi dòng đang BLOCKED. |

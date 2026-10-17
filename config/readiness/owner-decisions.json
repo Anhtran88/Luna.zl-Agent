@@ -25,18 +25,20 @@
     "chargedUsd": 0,
     "note": "Cap là mức tối đa mỗi tháng, không phải quyền chi và không phải cờ xác nhận. Vượt cap thì từ chối. Lần ghi này không phát sinh phí.",
     "caps": [
-      { "service": "firebase", "monthlyCap": 0, "currency": "USD", "status": "cap-recorded" },
+      { "service": "firebase", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
       { "service": "nineRouter", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" },
       { "service": "browser", "monthlyCap": 1, "currency": "USD", "status": "cap-recorded" }
     ]
   },
   "staging": {
+    "name": "luna-staging",
     "status": "owner-reported-present",
     "verified": false,
     "environment": null,
     "independentStagingOwner": false,
     "probed": false,
-    "note": "Chủ repo báo staging đã có. Chưa có evidence an toàn và staging owner vẫn trùng requester. Không probe."
+    "deployed": false,
+    "note": "Tên logic là luna-staging. Chủ repo báo staging đã có nhưng chưa verified. Không lưu URL hay credential. Không probe và không deploy."
   },
   "browserPolicy": {
     "realAutomation": "staging-only",
@@ -47,10 +49,20 @@
     "adapters": ["mock", "playwright-stub", "skyvern-stub", "browser-use-stub"]
   },
   "zaloEofficePolicy": {
-    "authorization": "scope-pending",
-    "scope": null,
-    "actions": "locked",
+    "authorization": "simulated-readonly",
+    "zalo": { "mode": "read-only", "audience": "designated-bi-groups", "send": "forbidden" },
+    "eoffice": { "form": "BM03.2", "mode": "read-compare", "edit": "forbidden", "submit": "forbidden" },
+    "attachments": {
+      "download": "simulated-only",
+      "merge": "one-pdf-per-delivery-note",
+      "namingRule": null,
+      "storagePath": null
+    },
+    "extract": ["deliveryDate", "project", "materials", "lineItems", "quantity"],
+    "unclear": "stop-and-ask-bi-or-luna",
+    "ticketEdit": { "actor": "nv-trinh-phieu", "after": "bi-approval", "executed": false },
     "executed": false,
-    "note": "Chủ repo muốn cho phép trong một phạm vi cụ thể nhưng chưa đưa scope hay action. Không suy diễn."
+    "login": false,
+    "note": "Chỉ policy và mô phỏng. Không login, không gửi Zalo, không sửa hoặc submit eOffice, không ghi đường dẫn."
   }
 }

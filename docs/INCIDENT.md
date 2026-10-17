@@ -5,7 +5,7 @@ Production vẫn **NO-GO**. Incident owner được ghi là kenbi nhưng trùng 
 1. Dừng thao tác đang định làm. Không deploy, không bật live.
 2. Ghi sự cố vào audit local. Không ghi credential.
 3. Không fetch Firebase, 9Router, hosting, telemetry hay endpoint public.
-4. Không đăng nhập hoặc sửa dữ liệu Zalo/eOffice. Scope còn pending nên không suy diễn thao tác.
+4. Không đăng nhập, không gửi Zalo và không sửa hoặc submit eOffice. Policy mô phỏng không phải thao tác thật.
 5. Dùng rollback local-no-op ở [ROLLBACK.md](ROLLBACK.md).
 6. Báo chủ repo. Handle kenbi đã được ghi nhưng vẫn BLOCKED vì collision. Không suy diễn handle khác.
 
