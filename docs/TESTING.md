@@ -2,6 +2,8 @@
 
 `npm ci` rồi `npm test` là đường kiểm tra chuẩn. CI chạy cùng lệnh, tiếp theo build/typecheck/lint/security và UI E2E local. Không cần `.grok` hoặc credential. `config/app-env.json` tracked cung cấp mặc định public auth-off; config local rồi process env có thể override. Auth staging chưa được hoàn tất.
 
+Dùng Node 22. Lockfile được kiểm bằng cả npm 10.9.9 (runner Node 22) và npm 11.9.0; dependency peer/optional `nitro/node_modules/lru-cache` phải được ghi đủ để npm 10 không từ chối `npm ci`.
+
 ## Vì sao có bốn upstream contracts tùy chọn
 
 `.grok/skills/og` thuộc bộ prompt/skill do nền tảng cung cấp, bị git-ignore và không được import để Luna chạy. Hai file sau trước đây đọc nó vô điều kiện:
