@@ -2,7 +2,7 @@
 
 Quyết định production: **NO-GO**.
 
-Phase 12 ghi quyết định chủ repo mà vẫn NO-GO: mọi vai là kenbi nên owner collision còn mở. Staging logic tên `luna-staging`, được báo đã có nhưng chưa verified. Cap tháng là Firebase, 9Router và Browser mỗi dịch vụ 1 USD; cap không phải bằng chứng và không phát sinh phí. Browser chỉ được xét ở staging, launch vẫn tắt. Zalo và eOffice chỉ có policy mô phỏng. License MIT không cấp quyền deploy. Xem [OPERATIONS.md](OPERATIONS.md) và `config/readiness/owner-decisions.json`.
+Phase 12 ghi quyết định chủ repo mà vẫn NO-GO: mọi vai là kenbi nên owner collision còn mở. Staging logic tên `luna-staging`, được báo đã có nhưng chưa verified. Cap tháng là Firebase, 9Router và Browser mỗi dịch vụ 1 USD; cap không phải bằng chứng và không phát sinh phí. Browser chỉ được xét ở staging, launch vẫn tắt. Zalo và eOffice chỉ có policy mô phỏng. PDF giao nhận dùng `P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf` nhưng không ghi file; storage root ngoài repo và đang unset. License MIT không cấp quyền deploy. Xem [OPERATIONS.md](OPERATIONS.md) và `config/readiness/owner-decisions.json`.
 
 Điểm kỹ thuật local có thể là 100/100. Điểm đó không cho phép deploy. Cờ xác nhận của chủ repo, dù được đặt, cũng không bật Firebase, 9Router, browser hay production.
 

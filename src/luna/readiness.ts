@@ -265,7 +265,7 @@ export function riskRegister(): Risk[] {
       severity: "high",
       owner: "chủ repo",
       status: "open",
-      mitigation: "Browser chỉ được xét ở staging và launch vẫn tắt. Production browser bị cấm. Zalo chỉ đọc ở nhóm Bi chỉ định và không gửi. eOffice BM03.2 chỉ đọc hoặc đối chiếu. Owner collision chưa giải.",
+      mitigation: "Browser chỉ được xét ở staging và launch vẫn tắt. Production browser bị cấm. Zalo chỉ đọc ở nhóm Bi chỉ định và không gửi. eOffice BM03.2 chỉ đọc hoặc đối chiếu. PDF ghép dùng P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf nhưng không ghi file. Owner collision chưa giải.",
       closeWhen: "Staging đã verified, evidence browser hợp lệ, hết collision, approval gate đạt, và Zalo/eOffice có scope cụ thể được chủ repo phê duyệt.",
     },
     {

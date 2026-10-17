@@ -103,7 +103,12 @@ describe("phase 12 owner decisions", () => {
         authorization: string;
         zalo: { send: string };
         eoffice: { edit: string; submit: string };
-        attachments: { storagePath: null; namingRule: null };
+        attachments: {
+          storagePath: null;
+          namingRule: string;
+          storageRoot: string;
+          stored: boolean;
+        };
         executed: boolean;
         login: boolean;
       };
@@ -129,8 +134,10 @@ describe("phase 12 owner decisions", () => {
     assert.equal(recorded.zaloEofficePolicy.zalo.send, "forbidden");
     assert.equal(recorded.zaloEofficePolicy.eoffice.edit, "forbidden");
     assert.equal(recorded.zaloEofficePolicy.eoffice.submit, "forbidden");
-    assert.equal(recorded.zaloEofficePolicy.attachments.namingRule, null);
+    assert.equal(recorded.zaloEofficePolicy.attachments.namingRule, "P.GIAO_[VATTU]_[dd.mm.yyyy]_[DUAN].pdf");
+    assert.equal(recorded.zaloEofficePolicy.attachments.storageRoot, "unset");
     assert.equal(recorded.zaloEofficePolicy.attachments.storagePath, null);
+    assert.equal(recorded.zaloEofficePolicy.attachments.stored, false);
     assert.equal(recorded.zaloEofficePolicy.executed, false);
     assert.equal(recorded.zaloEofficePolicy.login, false);
     const license = readFileSync("LICENSE", "utf8");
